@@ -26,12 +26,20 @@ from models.biomarker import (
     ECGMorphologyReport,
     PPGVascularReport,
     HRVNonlinearReport,
+    HRVAdvancedReport,
+    AutonomicReport,
     ArrhythmiaReport,
     SignalQualityReport,
+    TimeFreqReport,
+    ArtifactReport,
     BiomarkerReport,
 )
 from core.ecg_analyzer import ECGAnalyzer
 from core.ppg_analyzer import PPGAnalyzer
+from core.hrv_advanced import HRVAdvancedAnalyzer
+from core.hrv_autonomic import AutonomicIndexCalculator
+from core.hrv_timefreq import TimeFrequencyAnalyzer
+from core.artifact_correction import ArtifactCorrector
 
 
 class BiomarkerExtractor:
@@ -215,6 +223,46 @@ class BiomarkerExtractor:
                 risk_level=RiskLevel.UNKNOWN,   # No specific thresholds — informational
                 description="Percentage of successive RR differences > 20 ms.",
             ),
+            nn50=self._make_biomarker(
+                "nn50",
+                float(hrv_time_dict["nn50"]) if hrv_time_dict.get("nn50") is not None else None,
+                "count",
+                (10, 200),
+                (0, 10, 200, 500),
+                "Absolute count of successive RR differences > 50ms",
+            ),
+            sdann=self._make_biomarker(
+                "sdann",
+                hrv_time_dict.get("sdann"),
+                "ms",
+                (37, 63),
+                (20, 37, 63, 90),
+                "SD of 5-min mean RR intervals (requires ≥5 min recording)",
+            ),
+            sdnni=self._make_biomarker(
+                "sdnni",
+                hrv_time_dict.get("sdnni"),
+                "ms",
+                (25, 55),
+                (15, 25, 55, 80),
+                "Mean of 5-min SD of RR intervals",
+            ),
+            hrvi=self._make_biomarker(
+                "hrvi",
+                hrv_time_dict.get("hrvi"),
+                "a.u.",
+                (22, 52),
+                (10, 22, 52, 70),
+                "HRV Triangular Index (N/Y of RR histogram)",
+            ),
+            tinn=self._make_biomarker(
+                "tinn",
+                hrv_time_dict.get("tinn"),
+                "ms",
+                (204, 458),
+                (100, 204, 458, 600),
+                "Triangular Interpolation of NN histogram baseline width",
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -241,6 +289,30 @@ class BiomarkerExtractor:
                 hrv_freq_dict.get("lf_hf_ratio"),
                 "ratio",
                 "LF/HF ratio — index of sympatho-vagal balance.",
+            ),
+            total_power=self._make_biomarker(
+                "total_power",
+                hrv_freq_dict.get("total_power"),
+                "ms²",
+                (1000, 4000),
+                (400, 1000, 4000, 6000),
+                "Total spectral power (VLF + LF + HF)",
+            ),
+            lfnu=self._make_biomarker(
+                "lfnu",
+                hrv_freq_dict.get("lfnu"),
+                "n.u.",
+                (40, 60),
+                (25, 40, 60, 75),
+                "LF power in normalized units — sympathetic modulation index",
+            ),
+            hfnu=self._make_biomarker(
+                "hfnu",
+                hrv_freq_dict.get("hfnu"),
+                "n.u.",
+                (30, 40),
+                (20, 30, 40, 55),
+                "HF power in normalized units — parasympathetic modulation index",
             ),
         )
 
@@ -367,6 +439,80 @@ class BiomarkerExtractor:
         )
 
     # ------------------------------------------------------------------
+    # HRV advanced (Kubios Scientific level) sub-report
+    # ------------------------------------------------------------------
+    def _build_hrv_advanced(self, adv: dict) -> HRVAdvancedReport:
+        return HRVAdvancedReport(
+            dfa_alpha2=self._make_biomarker(
+                "DFA α2", adv.get("dfa_alpha2"), "a.u.",
+                (0.9, 1.1), (0.9, 1.1, 0.7, 1.5),
+                "Long-range fractal scaling exponent (DFA scales 16–64 beats).",
+            ),
+            approximate_entropy=self._make_biomarker(
+                "ApEn", adv.get("approximate_entropy"), "a.u.",
+                (0.7, 1.5), (0.7, 1.5, 0.3, 2.5),
+                "Approximate Entropy — signal regularity index (lower = more regular).",
+            ),
+            fuzzy_entropy=self._make_biomarker(
+                "FuzzyEn", adv.get("fuzzy_entropy"), "a.u.",
+                (0.8, 2.0), (0.8, 2.0, 0.4, 3.0),
+                "Fuzzy Entropy — more robust complexity measure for short series.",
+            ),
+            mse_slope=self._make_biomarker(
+                "MSE Slope", adv.get("mse_slope"), "a.u.",
+                (0.0, 0.5), (0.0, 0.5, -0.2, 1.0),
+                "Multiscale Entropy slope (positive = healthy complexity across scales).",
+            ),
+            rqa_rr_pct=self._make_biomarker(
+                "RQA RR%", adv.get("rr_pct"), "%",
+                (1.0, 5.0), (1.0, 5.0, 0.0, 20.0),
+                "RQA Recurrence Rate — density of recurring states in phase space.",
+            ),
+            rqa_det=self._make_biomarker(
+                "RQA DET", adv.get("det"), "%",
+                (50.0, 90.0), (50.0, 90.0, 30.0, 100.0),
+                "RQA Determinism — percentage of recurrence points forming diagonal lines.",
+            ),
+            rqa_entr=self._make_biomarker(
+                "RQA ENTR", adv.get("entr"), "bits",
+                (0.5, 2.5), (0.5, 2.5, 0.2, 4.0),
+                "RQA Shannon Entropy of diagonal length distribution.",
+            ),
+            lyapunov_exponent=self._make_biomarker(
+                "LLE (Rosenstein)", adv.get("lyapunov_exponent"), "ms⁻¹",
+                (0.005, 0.02), (0.005, 0.02, 0.0, 0.05),
+                "Largest Lyapunov Exponent — positive value indicates healthy chaotic dynamics.",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Autonomic nervous system sub-report
+    # ------------------------------------------------------------------
+    def _build_autonomic(self, auto: dict) -> AutonomicReport:
+        return AutonomicReport(
+            pns_index=self._make_biomarker(
+                "PNS Index", auto.get("pns_index"), "a.u.",
+                (-1.0, 1.0), (-1.0, 1.0, -2.0, 2.0),
+                "Parasympathetic Nervous System index (Kubios z-score of mean_RR, RMSSD, SD1).",
+            ),
+            sns_index=self._make_biomarker(
+                "SNS Index", auto.get("sns_index"), "a.u.",
+                (-1.0, 1.0), (-1.0, 1.0, -2.0, 2.0),
+                "Sympathetic Nervous System index (Kubios z-score of mean_HR, LF/HF, SD2).",
+            ),
+            baevsky_stress_index=self._make_biomarker(
+                "Baevsky SI", auto.get("baevsky_stress_index"), "a.u.",
+                (50.0, 150.0), (50.0, 150.0, 25.0, 300.0),
+                "Baevsky Stress Index — AMo/(2×Mo×MxDMn); >150 indicates sympathetic dominance.",
+            ),
+            autonomic_balance=self._make_biomarker(
+                "Autonomic Balance", auto.get("autonomic_balance"), "a.u.",
+                (-0.5, 1.5), (-0.5, 1.5, -1.5, 3.0),
+                "PNS − SNS index. Positive = parasympathetic dominant (rest/recovery).",
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
     def extract(
@@ -379,6 +525,12 @@ class BiomarkerExtractor:
         compute_morphology: bool = True,
         compute_nonlinear: bool = True,
         compute_arrhythmia: bool = True,
+        compute_advanced: bool = True,
+        compute_autonomic: bool = True,
+        compute_timefreq: bool = False,
+        artifact_correction: bool = True,
+        artifact_detection_method: str = "combined",
+        artifact_correction_method: str = "cubic_spline",
         warnings_list: Optional[list[str]] = None,
     ) -> BiomarkerReport:
         """
@@ -386,15 +538,21 @@ class BiomarkerExtractor:
 
         Parameters
         ----------
-        signal             : preprocessed 1-D signal array (float64)
-        fs                 : sampling rate in Hz
-        signal_type        : SignalType.ECG or SignalType.PPG
-        config             : PreprocessingConfig (forwarded to analyzer)
-        compute_hrv        : whether to compute HRV biomarkers
-        compute_morphology : whether to compute ECG morphology or PPG vascular indices
-        compute_nonlinear  : whether to compute non-linear HRV (ECG only)
-        compute_arrhythmia : whether to run arrhythmia screening (ECG only)
-        warnings_list      : external list to which analysis warnings are appended
+        signal                     : preprocessed 1-D signal array (float64)
+        fs                         : sampling rate in Hz
+        signal_type                : SignalType.ECG or SignalType.PPG
+        config                     : PreprocessingConfig (forwarded to analyzer)
+        compute_hrv                : whether to compute HRV biomarkers
+        compute_morphology         : whether to compute ECG morphology or PPG vascular indices
+        compute_nonlinear          : whether to compute non-linear HRV (ECG only)
+        compute_arrhythmia         : whether to run arrhythmia screening (ECG only)
+        compute_advanced           : DFA α2, ApEn, FuzzyEn, MSE, RQA, LLE
+        compute_autonomic          : PNS, SNS, Baevsky indices
+        compute_timefreq           : STFT/CWT time-frequency analysis (expensive)
+        artifact_correction        : detect and correct RR artifacts before HRV
+        artifact_detection_method  : "combined" | "threshold" | "quotient" | "moving_median"
+        artifact_correction_method : "cubic_spline" | "linear" | "moving_average" | "delete"
+        warnings_list              : external list to which analysis warnings are appended
 
         Returns
         -------
@@ -428,6 +586,8 @@ class BiomarkerExtractor:
             ecg_morph_report: Optional[ECGMorphologyReport] = None
             hrv_nl_report: Optional[HRVNonlinearReport] = None
             arrhythmia_report: Optional[ArrhythmiaReport] = None
+            hrv_advanced_report: Optional[HRVAdvancedReport] = None
+            autonomic_report: Optional[AutonomicReport] = None
 
             if compute_hrv:
                 if raw.get("hrv_time"):
@@ -452,6 +612,72 @@ class BiomarkerExtractor:
                     rr_cv=arr["rr_cv"],
                 )
 
+            rr_ms = np.array(raw.get("rr_intervals_ms", []), dtype=np.float64)
+
+            # ---- Artifact correction (applied to RR before advanced analyses) ----
+            artifact_report: Optional[ArtifactReport] = None
+            if artifact_correction and len(rr_ms) >= 5:
+                try:
+                    ac_result = ArtifactCorrector.process(
+                        rr_ms,
+                        detection_method=artifact_detection_method,
+                        correction_method=artifact_correction_method,
+                    )
+                    artifact_report = ArtifactReport(**ac_result["stats"])
+                    rr_ms = ac_result["corrected_rr"]
+                    if ac_result["stats"]["n_artifacts"] > 0:
+                        warnings_list.append(
+                            f"Artifact correction: {ac_result['stats']['n_artifacts']} beats "
+                            f"corrected ({ac_result['stats']['artifact_pct']:.1f}%) — "
+                            f"quality: {ac_result['stats']['quality_label']}"
+                        )
+                except Exception as exc:
+                    warnings_list.append(f"Artifact correction failed: {exc}")
+
+            if compute_advanced and len(rr_ms) >= 10:
+                try:
+                    adv_raw = HRVAdvancedAnalyzer.analyze_all(rr_ms)
+                    hrv_advanced_report = self._build_hrv_advanced(adv_raw)
+                    warnings_list.extend(adv_raw.get("warnings", []))
+                except Exception as exc:
+                    warnings_list.append(f"HRV advanced analysis failed: {exc}")
+
+            if compute_autonomic and len(rr_ms) >= 10:
+                try:
+                    auto_raw = AutonomicIndexCalculator.analyze(
+                        rr=rr_ms,
+                        hrv_time=raw.get("hrv_time") or {},
+                        hrv_nonlinear=raw.get("hrv_nonlinear") or {},
+                        hrv_freq=raw.get("hrv_freq") or {},
+                    )
+                    autonomic_report = self._build_autonomic(auto_raw)
+                except Exception as exc:
+                    warnings_list.append(f"Autonomic analysis failed: {exc}")
+
+            # ---- Time-frequency analysis (STFT + CWT) ----
+            time_freq_report: Optional[TimeFreqReport] = None
+            if compute_timefreq and len(rr_ms) >= 30:
+                try:
+                    tf_raw = TimeFrequencyAnalyzer.analyze(rr_ms)
+                    if tf_raw.get("has_data"):
+                        # Compute summary stats from STFT LF/HF over time
+                        lf_hf_series = tf_raw.get("stft", {}).get("lf_hf_over_time", [])
+                        lf_hf_variability = None
+                        dominant_lf_pct = None
+                        if lf_hf_series:
+                            arr = np.array([x for x in lf_hf_series if x is not None], dtype=float)
+                            if len(arr) > 1:
+                                lf_hf_variability = float(np.nanstd(arr))
+                                dominant_lf_pct = float(np.mean(arr > 1.0) * 100)
+                        time_freq_report = TimeFreqReport(
+                            has_stft=bool(tf_raw.get("stft")),
+                            has_cwt=bool(tf_raw.get("cwt")),
+                            lf_hf_variability=lf_hf_variability,
+                            dominant_lf_time_pct=dominant_lf_pct,
+                        )
+                except Exception as exc:
+                    warnings_list.append(f"Time-frequency analysis failed: {exc}")
+
             return BiomarkerReport(
                 signal_type=SignalType.ECG,
                 duration_seconds=round(duration_seconds, 3),
@@ -464,6 +690,10 @@ class BiomarkerExtractor:
                 ml_anomaly=None,
                 hrv_nonlinear=hrv_nl_report,
                 arrhythmia=arrhythmia_report,
+                hrv_advanced=hrv_advanced_report,
+                autonomic=autonomic_report,
+                artifact_correction=artifact_report,
+                time_freq=time_freq_report,
                 warnings=list(warnings_list),
             )
 

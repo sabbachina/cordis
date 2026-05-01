@@ -58,12 +58,78 @@ def _compute_hrv_time_domain(rr_intervals_ms: np.ndarray) -> dict:
     # pNN20 — percentage of successive differences > 20 ms
     pnn20 = float(np.sum(np.abs(diff_rr) > 20.0) / diff_rr.size * 100.0)
 
+    # NN50 conteggio assoluto
+    nn50 = int(np.sum(np.abs(diff_rr) > 50))
+    nn20 = int(np.sum(np.abs(diff_rr) > 20))
+
+    # SDANN e SDNNi — solo se segnale >= 5 min (300 s → circa 300 battiti a 60bpm)
+    # Segmenti da 5 min = 300000 ms
+    segment_ms = 300000.0
+    sdann = None
+    sddni = None  # nota: variabile era sdnni nel piano, usa sddni per evitare conflitti
+    if len(rr) >= 20:  # almeno 20 RR per provare
+        cumtime = np.cumsum(rr)
+        total_ms = cumtime[-1]
+        if total_ms >= segment_ms:
+            # Dividi in segmenti da 5 min
+            seg_means = []
+            seg_stds = []
+            t_start = 0.0
+            while t_start + segment_ms <= total_ms:
+                mask = (cumtime >= t_start) & (cumtime < t_start + segment_ms)
+                seg = rr[mask]
+                if len(seg) >= 5:
+                    seg_means.append(float(np.mean(seg)))
+                    seg_stds.append(float(np.std(seg, ddof=1) if len(seg) > 1 else 0.0))
+                t_start += segment_ms
+            if len(seg_means) >= 2:
+                sdann = float(np.std(seg_means, ddof=1))
+                sddni = float(np.mean(seg_stds))
+
+    # HRVi (Triangular Index) e TINN
+    # HRVi = N / Y  dove N = numero totale NN intervals, Y = frequenza massima dell'istogramma
+    # TINN = larghezza della base dell'interpolazione triangolare dell'istogramma
+    hrvi = None
+    tinn = None
+    if len(rr) >= 10:
+        bin_width = 1000.0 / 128.0  # ~7.8125 ms (standard Task Force)
+        rr_min = max(0, np.min(rr) - bin_width)
+        rr_max = np.max(rr) + bin_width
+        bins = np.arange(rr_min, rr_max + bin_width, bin_width)
+        hist, edges = np.histogram(rr, bins=bins)
+        max_count = int(np.max(hist))
+        if max_count > 0:
+            hrvi = float(len(rr) / max_count)
+        # TINN: trova N (bin del massimo) e i punti M, N della baseline triangolare
+        # Baseline: punti dove l'istogramma interseca la linea triangolare
+        peak_idx = int(np.argmax(hist))
+        # Cerca il punto a sinistra (M) e a destra (N) dell'approssimazione triangolare
+        # Approssimazione semplificata: TINN ≈ larghezza a metà altezza × 2
+        half_max = max_count / 2
+        left_idx = peak_idx
+        right_idx = peak_idx
+        for i in range(peak_idx, -1, -1):
+            if hist[i] < half_max:
+                left_idx = i
+                break
+        for i in range(peak_idx, len(hist)):
+            if hist[i] < half_max:
+                right_idx = i
+                break
+        tinn = float((right_idx - left_idx) * bin_width * 2)  # × 2 per approssimazione triangolare
+
     return {
         "mean_hr": mean_hr,
         "sdnn": sdnn,
         "rmssd": rmssd,
         "pnn50": pnn50,
         "pnn20": pnn20,
+        "nn50": nn50,
+        "nn20": nn20,
+        "sdann": sdann,
+        "sdnni": sddni,
+        "hrvi": hrvi,
+        "tinn": tinn,
     }
 
 
@@ -141,11 +207,19 @@ def _compute_hrv_freq_domain(
     hf_power = _band_power(0.15, 0.40)
     lf_hf_ratio = lf_power / hf_power if hf_power > 0 else np.nan
 
+    total_power = float(vlf_power + lf_power + hf_power)
+    lf_plus_hf = lf_power + hf_power
+    lfnu = float(lf_power / lf_plus_hf * 100) if lf_plus_hf > 0 else None
+    hfnu = float(hf_power / lf_plus_hf * 100) if lf_plus_hf > 0 else None
+
     return {
         "vlf_power": vlf_power,
         "lf_power": lf_power,
         "hf_power": hf_power,
         "lf_hf_ratio": lf_hf_ratio,
+        "total_power": total_power,
+        "lfnu": lfnu,
+        "hfnu": hfnu,
     }
 
 

@@ -7,6 +7,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.signal_plot import plot_signal
 from components.hrv_plots import plot_poincare, plot_hrv_spectrum, plot_hrv_psd
+from components.report_pdf import generate_pdf_report
 
 st.set_page_config(page_title="Step 5 — Report", page_icon="📋", layout="wide")
 st.title("📋 Step 5: Report Clinico")
@@ -111,9 +112,22 @@ if report.get("arrhythmia"):
     from components.biomarker_panel import render_arrhythmia_panel
     render_arrhythmia_panel(report["arrhythmia"])
 
+# STFT Time-Frequency section (optional — requires >=120s of signal)
+if report.get("time_freq") and report["time_freq"].get("stft"):
+    from components.hrv_plots import plot_stft_heatmap, plot_lf_hf_over_time
+    st.subheader("📡 Analisi Tempo-Frequenza (STFT)")
+    st.plotly_chart(
+        plot_stft_heatmap(report["time_freq"]["stft"]),
+        use_container_width=True,
+    )
+    st.plotly_chart(
+        plot_lf_hf_over_time(report["time_freq"]["stft"]),
+        use_container_width=True,
+    )
+
 # Export
 st.subheader("💾 Export Report")
-col_a, col_b = st.columns(2)
+col_a, col_b, col_c = st.columns(3)
 
 with col_a:
     if all_bms:
@@ -133,6 +147,24 @@ with col_b:
         file_name=f"report_{signal_type}_{now.replace(' ', '_').replace(':', '')}.json",
         mime="application/json",
     )
+
+with col_c:
+    try:
+        pdf_bytes = generate_pdf_report(
+            report,
+            sig,
+            fs,
+            peaks,
+            signal_type,
+        )
+        st.download_button(
+            label="📄 Scarica Report PDF",
+            data=pdf_bytes,
+            file_name=f"report_{signal_type}_{now.replace(' ', '_').replace(':', '')}.pdf",
+            mime="application/pdf",
+        )
+    except Exception as _pdf_err:
+        st.error(f"Errore generazione PDF: {_pdf_err}")
 
 st.markdown("---")
 st.info("**Nuova analisi?** Torna allo **Step 1** per caricare un nuovo segnale.")

@@ -108,6 +108,83 @@ def plot_rr_histogram(rr_intervals_ms: list) -> go.Figure:
     return fig
 
 
+def plot_stft_heatmap(stft_data: dict) -> go.Figure:
+    """Heatmap STFT power over time — Kubios-style time-frequency spectrogram."""
+    if not stft_data or not stft_data.get("times"):
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Dati STFT non disponibili (richiede >=120s di segnale)",
+            x=0.5, y=0.5, showarrow=False,
+        )
+        return fig
+
+    times = stft_data["times"]
+    freqs = stft_data["freqs"]
+    power_db = stft_data["power_db"]
+
+    fig = go.Figure(data=go.Heatmap(
+        z=power_db,
+        x=times,
+        y=freqs,
+        colorscale="Viridis",
+        colorbar=dict(title="Power (dB)"),
+        zmin=-20, zmax=20,
+    ))
+
+    # Add HRV band markers
+    for f, label, color in [
+        (0.04, "VLF/LF", "rgba(155,89,182,0.4)"),
+        (0.15, "LF/HF", "rgba(52,152,219,0.4)"),
+        (0.40, "HF limit", "rgba(46,204,113,0.4)"),
+    ]:
+        if freqs and f <= max(freqs):
+            fig.add_hline(
+                y=f, line=dict(color=color, width=1, dash="dash"),
+                annotation_text=f"{label} ({f}Hz)",
+            )
+
+    fig.update_layout(
+        title="STFT Time-Frequency Spectrogram (HRV)",
+        xaxis_title="Time (s)",
+        yaxis_title="Frequency (Hz)",
+        height=320,
+        margin=dict(l=60, r=20, t=40, b=40),
+    )
+    return fig
+
+
+def plot_lf_hf_over_time(stft_data: dict) -> go.Figure:
+    """LF and HF power over time from STFT analysis."""
+    if not stft_data:
+        fig = go.Figure()
+        fig.add_annotation(text="N/D", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+    times = stft_data.get("times", [])
+    lf = stft_data.get("lf_over_time", [])
+    hf = stft_data.get("hf_over_time", [])
+
+    fig = go.Figure()
+    if lf:
+        fig.add_trace(go.Scatter(
+            x=times, y=lf, mode="lines",
+            name="LF Power", line=dict(color="#3498db", width=2),
+        ))
+    if hf:
+        fig.add_trace(go.Scatter(
+            x=times, y=hf, mode="lines",
+            name="HF Power", line=dict(color="#2ecc71", width=2),
+        ))
+    fig.update_layout(
+        title="LF / HF Power Over Time",
+        xaxis_title="Time (s)",
+        yaxis_title="Power (ms^2)",
+        height=260,
+        margin=dict(l=50, r=20, t=40, b=40),
+    )
+    return fig
+
+
 def plot_hrv_psd(rr_intervals_ms: list) -> go.Figure:
     """Power Spectral Density continuo (Welch) con bande colorate."""
     from scipy import signal as scipy_signal

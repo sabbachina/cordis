@@ -46,6 +46,12 @@ def analyze_signal(request: AnalysisRequest):
             compute_morphology=request.compute_morphology,
             compute_nonlinear=request.compute_nonlinear,
             compute_arrhythmia=request.compute_arrhythmia,
+            compute_advanced=request.compute_advanced,
+            compute_autonomic=request.compute_autonomic,
+            compute_timefreq=request.compute_timefreq,
+            artifact_correction=request.artifact_correction,
+            artifact_detection_method=request.artifact_detection_method,
+            artifact_correction_method=request.artifact_correction_method,
             warnings_list=warnings,
         )
 

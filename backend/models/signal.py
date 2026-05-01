@@ -32,3 +32,9 @@ class AnalysisRequest(BaseModel):
     compute_nonlinear: bool = True
     compute_arrhythmia: bool = True
     compute_signal_quality: bool = True
+    compute_timefreq: bool = False    # Costoso, off by default
+    artifact_correction: bool = True  # On by default
+    artifact_detection_method: str = Field(default="combined", pattern="^(threshold|quotient|moving_median|combined)$")
+    artifact_correction_method: str = Field(default="cubic_spline", pattern="^(linear|cubic_spline|moving_average|delete)$")
+    compute_advanced: bool = True   # DFA α2, ApEn, FuzzyEn, MSE, RQA, LLE
+    compute_autonomic: bool = True  # PNS, SNS, Baevsky

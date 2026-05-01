@@ -25,6 +25,11 @@ class HRVTimeReport(BaseModel):
     rmssd: BiomarkerValue
     pnn50: BiomarkerValue
     pnn20: BiomarkerValue
+    nn50: Optional[BiomarkerValue] = None
+    sdann: Optional[BiomarkerValue] = None
+    sdnni: Optional[BiomarkerValue] = None
+    hrvi: Optional[BiomarkerValue] = None
+    tinn: Optional[BiomarkerValue] = None
 
 
 class HRVFreqReport(BaseModel):
@@ -32,6 +37,9 @@ class HRVFreqReport(BaseModel):
     lf_power: BiomarkerValue
     hf_power: BiomarkerValue
     lf_hf_ratio: BiomarkerValue
+    total_power: Optional[BiomarkerValue] = None
+    lfnu: Optional[BiomarkerValue] = None
+    hfnu: Optional[BiomarkerValue] = None
 
 
 class ECGMorphologyReport(BaseModel):
@@ -55,6 +63,25 @@ class HRVNonlinearReport(BaseModel):
     sd1_sd2_ratio: BiomarkerValue
     sample_entropy: BiomarkerValue
     dfa_alpha1: BiomarkerValue   # DFA short-range scaling exponent
+
+
+class HRVAdvancedReport(BaseModel):
+    """Advanced nonlinear HRV — Kubios Scientific level."""
+    dfa_alpha2: Optional[BiomarkerValue] = None
+    approximate_entropy: Optional[BiomarkerValue] = None
+    fuzzy_entropy: Optional[BiomarkerValue] = None
+    mse_slope: Optional[BiomarkerValue] = None
+    rqa_rr_pct: Optional[BiomarkerValue] = None
+    rqa_det: Optional[BiomarkerValue] = None
+    rqa_entr: Optional[BiomarkerValue] = None
+    lyapunov_exponent: Optional[BiomarkerValue] = None
+
+
+class AutonomicReport(BaseModel):
+    pns_index: Optional[BiomarkerValue] = None
+    sns_index: Optional[BiomarkerValue] = None
+    baevsky_stress_index: Optional[BiomarkerValue] = None
+    autonomic_balance: Optional[BiomarkerValue] = None
 
 
 class ArrhythmiaReport(BaseModel):
@@ -84,6 +111,23 @@ class MLAnomalyReport(BaseModel):
     confidence: float
 
 
+class TimeFreqReport(BaseModel):
+    """STFT/CWT time-frequency analysis summary."""
+    has_stft: bool = False
+    has_cwt: bool = False
+    lf_hf_variability: Optional[float] = None   # std of LF/HF over time (non-stationarity index)
+    dominant_lf_time_pct: Optional[float] = None # % of time where LF > HF
+
+
+class ArtifactReport(BaseModel):
+    n_total_beats: int
+    n_artifacts: int
+    artifact_ratio: float
+    artifact_pct: float
+    quality_label: str
+    correctable: bool
+
+
 class BiomarkerReport(BaseModel):
     signal_type: str
     duration_seconds: float
@@ -97,4 +141,8 @@ class BiomarkerReport(BaseModel):
     hrv_nonlinear: Optional[HRVNonlinearReport] = None
     arrhythmia: Optional[ArrhythmiaReport] = None
     signal_quality: Optional[SignalQualityReport] = None
+    time_freq: Optional[TimeFreqReport] = None
+    artifact_correction: Optional[ArtifactReport] = None
+    hrv_advanced: Optional[HRVAdvancedReport] = None
+    autonomic: Optional[AutonomicReport] = None
     warnings: list[str] = []
