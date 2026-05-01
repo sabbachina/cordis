@@ -3,34 +3,44 @@ import numpy as np
 import pandas as pd
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.i18n import t, render_language_selector
 from utils.sample_data import generate_sample_ecg, generate_sample_ppg
 from utils.api_client import check_backend_health
 from components.signal_plot import plot_signal
 
 st.set_page_config(page_title="Step 1 — Upload", page_icon="📤", layout="wide")
-st.title("📤 Step 1: Upload Segnale")
-st.markdown("Carica il tuo file ECG o PPG, oppure usa i segnali campione per esplorare la piattaforma.")
 
-# Backend status
+render_language_selector()
+
+st.title(t("step1_title"))
+st.markdown(t("step1_subtitle"))
+
 backend_ok = check_backend_health()
 if backend_ok:
-    st.success("✅ Backend connesso")
+    st.success(t("backend_ok"))
 else:
-    st.warning("⚠️ Backend non raggiungibile — modalità offline (solo dati campione)")
+    st.warning(t("backend_fail"))
 
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.subheader("Configurazione Segnale")
-    signal_type = st.selectbox("Tipo di segnale", ["ECG", "PPG"], help="ECG = Elettrocardiogramma | PPG = Fotopletismografia")
+    st.subheader(t("signal_config"))
+    signal_type = st.selectbox(
+        t("signal_type_label"),
+        ["ECG", "PPG"],
+        help=t("signal_type_help"),
+    )
 
-    source = st.radio("Sorgente dati", ["Dati campione (demo)", "Carica file"])
+    source = st.radio(
+        t("data_source"),
+        [t("source_sample"), t("source_upload")],
+    )
 
-    if source == "Dati campione (demo)":
+    if source == t("source_sample"):
         fs_default = 500 if signal_type == "ECG" else 125
-        st.info(f"Verrà generato un segnale {signal_type} sintetico di 30 secondi a {fs_default} Hz")
-        if st.button("🔄 Genera segnale campione", type="primary"):
-            with st.spinner("Generazione in corso..."):
+        st.info(t("sample_info", st=signal_type, fs=fs_default))
+        if st.button(t("btn_generate"), type="primary"):
+            with st.spinner(t("spinner_generate")):
                 if signal_type == "ECG":
                     sig, fs = generate_sample_ecg()
                 else:
@@ -41,14 +51,15 @@ with col1:
             st.session_state.clean_signal = None
             st.session_state.peaks = None
             st.session_state.biomarker_report = None
-            st.success(f"Segnale {signal_type} generato: {len(sig)} campioni a {fs} Hz")
+            st.success(t("generated_ok", st=signal_type, n=len(sig), fs=fs))
     else:
-        uploaded = st.file_uploader("Carica file", type=["csv", "txt", "xlsx", "xls", "edf", "json"])
-        fs_manual = st.number_input("Frequenza di campionamento (Hz)", min_value=50, max_value=2000, value=500 if signal_type == "ECG" else 125)
-        col_name = st.text_input("Nome colonna segnale (CSV/Excel)", value="amplitude", help="Lascia vuoto per usare la prima colonna numerica")
+        uploaded = st.file_uploader(t("uploader_label"), type=["csv", "txt", "xlsx", "xls", "edf", "json"])
+        fs_manual = st.number_input(t("fs_label"), min_value=50, max_value=2000,
+                                    value=500 if signal_type == "ECG" else 125)
+        col_name = st.text_input(t("col_name_label"), value="amplitude", help=t("col_name_help"))
 
-        if uploaded and st.button("📂 Carica segnale", type="primary"):
-            with st.spinner("Caricamento..."):
+        if uploaded and st.button(t("btn_upload"), type="primary"):
+            with st.spinner(t("spinner_upload")):
                 try:
                     suffix = os.path.splitext(uploaded.name)[1].lower()
                     if suffix in (".csv", ".txt"):
@@ -67,7 +78,7 @@ with col1:
                         sig = np.array(data.get("values", data.get("signal", [])))
                         fs = data.get("sampling_rate", fs_manual)
                     else:
-                        st.error(f"Formato {suffix} richiede il backend. Avvia docker-compose.")
+                        st.error(t("upload_format_err", ext=suffix))
                         sig, fs = None, None
 
                     if sig is not None and len(sig) > 0:
@@ -77,26 +88,26 @@ with col1:
                         st.session_state.clean_signal = None
                         st.session_state.peaks = None
                         st.session_state.biomarker_report = None
-                        st.success(f"Caricati {len(sig)} campioni a {fs} Hz")
+                        st.success(t("upload_ok", n=len(sig), fs=fs))
                 except Exception as e:
-                    st.error(f"Errore caricamento: {e}")
+                    st.error(t("upload_err", err=e))
 
 with col2:
-    st.subheader("Anteprima Segnale")
+    st.subheader(t("preview_title"))
     if st.session_state.signal_data is not None:
         sig = st.session_state.signal_data
         fs = st.session_state.sampling_rate
-        # Mostra solo i primi 10 secondi per performance
         preview_len = min(len(sig), fs * 10)
-        fig = plot_signal(sig[:preview_len], fs, title=f"{st.session_state.signal_type} — Anteprima (primi 10s)")
+        fig = plot_signal(sig[:preview_len], fs,
+                          title=t("preview_plot", st=st.session_state.signal_type))
         st.plotly_chart(fig, use_container_width=True)
 
         info_cols = st.columns(4)
-        info_cols[0].metric("Campioni", f"{len(sig):,}")
-        info_cols[1].metric("Frequenza", f"{fs} Hz")
-        info_cols[2].metric("Durata", f"{len(sig)/fs:.1f} s")
-        info_cols[3].metric("Tipo", st.session_state.signal_type)
+        info_cols[0].metric(t("metric_samples"), f"{len(sig):,}")
+        info_cols[1].metric(t("metric_freq"), f"{fs} Hz")
+        info_cols[2].metric(t("metric_duration"), f"{len(sig)/fs:.1f} s")
+        info_cols[3].metric(t("metric_type"), st.session_state.signal_type)
 
-        st.success("✅ Segnale caricato! Vai al **Step 2: Preprocessing** →")
+        st.success(t("step1_done"))
     else:
-        st.info("Nessun segnale caricato. Usa il pannello a sinistra.")
+        st.info(t("no_signal"))

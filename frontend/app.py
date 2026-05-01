@@ -1,4 +1,7 @@
 import streamlit as st
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.i18n import t, render_language_selector
 
 st.set_page_config(
     page_title="ECG/PPG Analysis Platform",
@@ -6,49 +9,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-st.sidebar.title("❤️ ECG/PPG Platform")
-st.sidebar.markdown("---")
-
-steps = {
-    "1️⃣ Upload Segnale": "Upload e caricamento del segnale ECG o PPG",
-    "2️⃣ Preprocessing": "Filtraggio e pulizia del segnale",
-    "3️⃣ Peak Detection": "Rilevamento automatico dei picchi",
-    "4️⃣ Biomarker": "Estrazione digital biomarker clinici",
-    "5️⃣ Report": "Report clinico e export",
-}
-
-st.sidebar.markdown("### Wizard Steps")
-for step, desc in steps.items():
-    st.sidebar.markdown(f"**{step}**")
-    st.sidebar.caption(desc)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("⚠️ *FOR RESEARCH USE ONLY*")
-st.sidebar.markdown("*NOT CE-MARKED*")
-
-st.title("🫀 ECG/PPG Analysis Platform")
-st.markdown("""
-Benvenuto nella piattaforma guidata per l'analisi di segnali ECG e PPG con estrazione di **digital biomarker clinici**.
-
-### Come procedere:
-Usa il **menu a sinistra** (pagine) per navigare attraverso i 5 step del wizard:
-
-| Step | Pagina | Descrizione |
-|------|--------|-------------|
-| 1 | **Upload** | Carica il tuo file ECG o PPG (CSV, EDF, WFDB, JSON) oppure usa i dati campione |
-| 2 | **Preprocessing** | Applica filtri e rimuovi artefatti dal segnale |
-| 3 | **Peak Detection** | Individua automaticamente i picchi R (ECG) o sistolici (PPG) |
-| 4 | **Biomarker** | Estrai HRV, QTc, Augmentation Index e altri biomarker clinici |
-| 5 | **Report** | Visualizza e scarica il report clinico completo |
-
-### Segnali supportati:
-- **ECG** — Elettrocardiogramma (singola derivazione o multiderivazione)
-- **PPG** — Fotopletismografia (da wearable o sensore clinico)
-
-### Formati input:
-CSV · Excel · EDF/EDF+ · WFDB/MIT-BIH · JSON
-""")
 
 # Session state initialization
 if "signal_data" not in st.session_state:
@@ -63,3 +23,49 @@ if "peaks" not in st.session_state:
     st.session_state.peaks = None
 if "biomarker_report" not in st.session_state:
     st.session_state.biomarker_report = None
+if "lang" not in st.session_state:
+    st.session_state.lang = "it"
+
+st.sidebar.title(t("sidebar_title"))
+render_language_selector()
+st.sidebar.markdown("---")
+
+steps = {
+    t("nav_step1"): t("nav_desc1"),
+    t("nav_step2"): t("nav_desc2"),
+    t("nav_step3"): t("nav_desc3"),
+    t("nav_step4"): t("nav_desc4"),
+    t("nav_step5"): t("nav_desc5"),
+}
+
+st.sidebar.markdown(f"### {t('sidebar_steps_header')}")
+for step, desc in steps.items():
+    st.sidebar.markdown(f"**{step}**")
+    st.sidebar.caption(desc)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"⚠️ *{t('research_only')}*")
+st.sidebar.markdown(f"*{t('not_ce')}*")
+
+st.title(t("app_title"))
+st.markdown(t("home_welcome"))
+
+st.markdown(t("home_how"))
+st.markdown(t("home_nav_hint"))
+
+st.markdown(f"""
+| {t('home_col_step')} | {t('home_col_page')} | {t('home_col_desc')} |
+|------|--------|-------------|
+| 1 | {t('home_row1_page')} | {t('home_row1_desc')} |
+| 2 | {t('home_row2_page')} | {t('home_row2_desc')} |
+| 3 | {t('home_row3_page')} | {t('home_row3_desc')} |
+| 4 | {t('home_row4_page')} | {t('home_row4_desc')} |
+| 5 | {t('home_row5_page')} | {t('home_row5_desc')} |
+""")
+
+st.markdown(t("home_signals"))
+st.markdown(t("home_ecg_desc"))
+st.markdown(t("home_ppg_desc"))
+
+st.markdown(t("home_formats"))
+st.markdown(t("home_formats_list"))
