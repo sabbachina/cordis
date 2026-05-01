@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:neurokit2.readthedocs.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:streamlit.io)",
+      "WebFetch(domain:www.hl7.org)",
+      "WebFetch(domain:plotly.com)",
+      "WebFetch(domain:wfdb.io)",
+      "WebFetch(domain:mne.tools)",
+      "WebFetch(domain:dash.plotly.com)",
+      "WebFetch(domain:www.edfreader.org)",
+      "WebFetch(domain:bokeh.org)",
+      "WebFetch(domain:physionet.org)",
+      "WebFetch(domain:towardsdatascience.com)",
+      "WebFetch(domain:python-visualization.github.io)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:www.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:scientisst.org)",
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:scipy.org)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip install *)",
+      "Bash(git init *)",
+      "Bash(python3 -c \"import neurokit2; print\\('neurokit2 ok'\\)\")",
+      "Bash(python3 -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(python3 -c \"import pandas; print\\('pandas ok'\\)\")",
+      "Bash(python3 -c \"import neurokit2; print\\('neurokit2 ok', neurokit2.__version__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python3 *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(python *)",
+      "Bash(PYTHONPATH=/home/ec2-user/SageMaker/AI_data/backend uvicorn main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8501/healthz)",
+      "Bash(curl -s http://localhost:8000/signals/sample/ECG)",
+      "Bash(curl -s http://localhost:8000/signals/sample/PPG)",
+      "Bash(curl -s -X POST http://localhost:8000/analysis/analyze -H 'Content-Type: application/json' -d '{\"signal\":{\"signal_type\":\"ECG\",\"sampling_rate\":500,\"values\":[0.1,0.2]},\"compute_hrv\":true,\"compute_morphology\":true,\"compute_ml\":false}')"
+    ]
+  }
+}

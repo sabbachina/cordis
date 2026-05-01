@@ -3,7 +3,7 @@ import numpy as np
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.signal_plot import plot_signal
-from components.hrv_plots import plot_poincare
+from components.hrv_plots import plot_poincare, plot_rr_tachogram, plot_rr_histogram
 
 st.set_page_config(page_title="Step 3 — Peak Detection", page_icon="📍", layout="wide")
 st.title("📍 Step 3: Rilevamento Picchi")
@@ -76,11 +76,16 @@ with col2:
         col_c.metric("RR medio", f"{np.mean(rr_ms):.1f} ms")
         col_d.metric("RR std", f"{np.std(rr_ms):.1f} ms")
 
-        # Poincaré preview
+        # RR visualization — tabs con Tachogramma, Distribuzione, Poincaré
         if len(rr_ms) >= 10:
-            st.subheader("Poincaré Plot (preview)")
-            fig_p = plot_poincare(rr_ms.tolist())
-            st.plotly_chart(fig_p, use_container_width=True)
+            tab1, tab2, tab3 = st.tabs(["📈 Tachogramma", "📊 Distribuzione RR", "🔵 Poincaré"])
+            with tab1:
+                st.plotly_chart(plot_rr_tachogram(rr_ms.tolist()), use_container_width=True)
+            with tab2:
+                st.plotly_chart(plot_rr_histogram(rr_ms.tolist()), use_container_width=True)
+            with tab3:
+                fig_p = plot_poincare(rr_ms.tolist())
+                st.plotly_chart(fig_p, use_container_width=True)
 
         st.success("✅ Vai al **Step 4: Biomarker** →")
     else:

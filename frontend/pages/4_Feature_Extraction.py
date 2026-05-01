@@ -31,6 +31,9 @@ with col1:
                                      help="Per ECG: QTc, PR, QRS, ST. Per PPG: AIx, Resp Rate.")
     compute_ml = st.checkbox("ML Anomaly Detection", value=True,
                              help="IsolationForest + regole cliniche per flagging automatico")
+    compute_nonlinear = st.checkbox("HRV Non-lineare (Poincaré, DFA, Entropy)", value=True)
+    compute_arrhythmia = st.checkbox("Analisi Aritmia (AFib, ectopici)", value=True)
+    compute_signal_quality = st.checkbox("Signal Quality Index", value=True)
 
     min_duration = len(sig) / fs
     if min_duration < 30 and compute_hrv:
@@ -52,6 +55,9 @@ with col1:
                 "compute_hrv": compute_hrv,
                 "compute_morphology": compute_morphology,
                 "compute_ml": compute_ml,
+                "compute_nonlinear": compute_nonlinear,
+                "compute_arrhythmia": compute_arrhythmia,
+                "compute_signal_quality": compute_signal_quality,
             }
             with st.spinner("Analisi in corso (può richiedere 10-30s)..."):
                 try:
@@ -108,6 +114,21 @@ with col2:
             ppg_v = report["ppg_vascular"]
             bms = [ppg_v["pulse_amplitude"], ppg_v["augmentation_index"], ppg_v["respiratory_rate"]]
             render_biomarker_section("🩺 Parametri Vascolari PPG", bms)
+
+        # HRV Non-lineare
+        if report.get("hrv_nonlinear"):
+            from components.biomarker_panel import render_nonlinear_section
+            render_nonlinear_section(report["hrv_nonlinear"])
+
+        # Aritmia
+        if report.get("arrhythmia"):
+            from components.biomarker_panel import render_arrhythmia_panel
+            render_arrhythmia_panel(report["arrhythmia"])
+
+        # Signal Quality
+        if report.get("signal_quality"):
+            from components.biomarker_panel import render_sqi_widget
+            render_sqi_widget(report["signal_quality"])
 
         # Poincaré
         peaks = st.session_state.get("peaks")

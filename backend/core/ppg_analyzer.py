@@ -100,6 +100,8 @@ class PPGAnalyzer:
         result: dict = {
             "pulse_amplitude": None,
             "augmentation_index": None,
+            "stiffness_index": None,
+            "reflection_index": None,
             "respiratory_rate": None,
         }
 
@@ -170,7 +172,67 @@ class PPGAnalyzer:
             result["augmentation_index"] = float(np.mean(aix_values))
 
         # ----------------------------------------------------------------
-        # 3. Respiratory rate via amplitude modulation of the PPG envelope
+        # 3. Stiffness Index (SI)
+        #    Proxy: SI = 1 / (diastolic_time * mean_HR / 60)
+        #    where diastolic_time is the mean time from systolic peak to the
+        #    next diastolic feature (end of beat), estimated as mean IBI.
+        # ----------------------------------------------------------------
+        try:
+            ibi_s = np.diff(peaks.astype(np.float64)) / fs   # inter-beat intervals (s)
+            if ibi_s.size > 0:
+                mean_ibi = float(np.mean(ibi_s))
+                mean_hr_si = 60.0 / mean_ibi if mean_ibi > 0 else 0.0
+                diastolic_time = mean_ibi * 0.65              # ~65 % of beat is diastole
+                si = 1.0 / (diastolic_time * mean_hr_si / 60.0) if diastolic_time > 0 and mean_hr_si > 0 else None
+                result["stiffness_index"] = round(float(si), 4) if si is not None else None
+            else:
+                result["stiffness_index"] = None
+        except Exception:
+            result["stiffness_index"] = None
+
+        # ----------------------------------------------------------------
+        # 4. Reflection Index (RI)
+        #    RI = (systolic_amplitude - dicrotic_notch_amplitude)
+        #         / systolic_amplitude * 100
+        #    The dicrotic notch is identified as the minimum in the first
+        #    60 % of each beat window (between two successive systolic peaks).
+        # ----------------------------------------------------------------
+        ri_values: list[float] = []
+
+        for i in range(len(peaks) - 1):
+            pk_idx = int(peaks[i])
+            next_pk_idx = int(peaks[i + 1])
+            beat_len = next_pk_idx - pk_idx
+            if beat_len < 6:
+                continue
+
+            beat = signal[pk_idx:next_pk_idx]
+            p1 = float(signal[pk_idx])
+
+            # Dicrotic notch: minimum in the range 30 %–70 % of beat
+            notch_start = max(1, int(0.30 * beat_len))
+            notch_end = min(beat_len - 1, int(0.70 * beat_len))
+            if notch_end <= notch_start:
+                continue
+
+            notch_amplitude = float(np.min(beat[notch_start:notch_end]))
+
+            # Baseline (trough before systolic peak)
+            trough_win_start = int(peaks[i - 1]) if i > 0 else 0
+            baseline = float(np.min(signal[trough_win_start:pk_idx + 1]))
+
+            pulse_pressure = p1 - baseline
+            if pulse_pressure <= 0:
+                continue
+
+            ri = (p1 - notch_amplitude) / pulse_pressure * 100.0
+            if 0.0 <= ri <= 100.0:
+                ri_values.append(ri)
+
+        result["reflection_index"] = float(np.mean(ri_values)) if ri_values else None
+
+        # ----------------------------------------------------------------
+        # 5. Respiratory rate via amplitude modulation of the PPG envelope
         #    Method: extract peak amplitudes, resample to uniform grid,
         #    FFT → dominant frequency in 0.1–0.5 Hz (6–30 breaths/min)
         # ----------------------------------------------------------------
@@ -312,6 +374,8 @@ class PPGAnalyzer:
                 result["vascular"] = {
                     "pulse_amplitude": None,
                     "augmentation_index": None,
+                    "stiffness_index": None,
+                    "reflection_index": None,
                     "respiratory_rate": None,
                 }
 

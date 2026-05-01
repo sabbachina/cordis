@@ -6,7 +6,7 @@ from datetime import datetime
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.signal_plot import plot_signal
-from components.hrv_plots import plot_poincare, plot_hrv_spectrum
+from components.hrv_plots import plot_poincare, plot_hrv_spectrum, plot_hrv_psd
 
 st.set_page_config(page_title="Step 5 — Report", page_icon="📋", layout="wide")
 st.title("📋 Step 5: Report Clinico")
@@ -32,7 +32,7 @@ st.markdown(f"""
 
 # Summary table
 all_bms = []
-for section_key in ["hrv_time", "hrv_freq", "ecg_morphology", "ppg_vascular"]:
+for section_key in ["hrv_time", "hrv_freq", "ecg_morphology", "ppg_vascular", "hrv_nonlinear"]:
     section = report.get(section_key)
     if section:
         for bm_key, bm in section.items():
@@ -82,7 +82,7 @@ st.plotly_chart(fig, use_container_width=True)
 # HRV plots
 if report.get("hrv_freq"):
     hrv_f = report["hrv_freq"]
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     with col_a:
         if peaks is not None and len(peaks) >= 10:
             rr_ms = np.diff(peaks) / fs * 1000
@@ -94,6 +94,22 @@ if report.get("hrv_freq"):
         hf = hrv_f["hf_power"]["value"] or 0
         fig_s = plot_hrv_spectrum(vlf, lf, hf)
         st.plotly_chart(fig_s, use_container_width=True)
+    with col_c:
+        if peaks is not None and len(peaks) >= 10:
+            rr_ms = np.diff(peaks) / fs * 1000
+            fig_psd = plot_hrv_psd(rr_ms.tolist())
+            st.plotly_chart(fig_psd, use_container_width=True)
+
+# SQI Summary
+if report.get("signal_quality"):
+    from components.biomarker_panel import render_sqi_widget
+    st.subheader("📡 Qualità Segnale (SQI)")
+    render_sqi_widget(report["signal_quality"])
+
+# Aritmia Summary
+if report.get("arrhythmia"):
+    from components.biomarker_panel import render_arrhythmia_panel
+    render_arrhythmia_panel(report["arrhythmia"])
 
 # Export
 st.subheader("💾 Export Report")

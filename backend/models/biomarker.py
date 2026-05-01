@@ -44,7 +44,37 @@ class ECGMorphologyReport(BaseModel):
 class PPGVascularReport(BaseModel):
     pulse_amplitude: BiomarkerValue
     augmentation_index: BiomarkerValue
+    stiffness_index: Optional[BiomarkerValue] = None
+    reflection_index: Optional[BiomarkerValue] = None
     respiratory_rate: BiomarkerValue
+
+
+class HRVNonlinearReport(BaseModel):
+    sd1: BiomarkerValue          # Poincaré SD1
+    sd2: BiomarkerValue          # Poincaré SD2
+    sd1_sd2_ratio: BiomarkerValue
+    sample_entropy: BiomarkerValue
+    dfa_alpha1: BiomarkerValue   # DFA short-range scaling exponent
+
+
+class ArrhythmiaReport(BaseModel):
+    afib_suspected: bool
+    afib_evidence: list[str]
+    ectopic_beats: int
+    ectopic_ratio: float
+    heart_rate_class: str        # normal | bradycardia | tachycardia
+    rr_cv: float
+
+
+class SignalQualityReport(BaseModel):
+    overall_score: float         # 0–100
+    quality_label: str           # Good / Acceptable / Poor / Unacceptable
+    snr_db: float
+    flatline_fraction: float
+    clipping_fraction: float
+    baseline_wander_fraction: float
+    hf_noise_fraction: float
+    warnings: list[str]
 
 
 class MLAnomalyReport(BaseModel):
@@ -64,4 +94,7 @@ class BiomarkerReport(BaseModel):
     ecg_morphology: Optional[ECGMorphologyReport] = None
     ppg_vascular: Optional[PPGVascularReport] = None
     ml_anomaly: Optional[MLAnomalyReport] = None
+    hrv_nonlinear: Optional[HRVNonlinearReport] = None
+    arrhythmia: Optional[ArrhythmiaReport] = None
+    signal_quality: Optional[SignalQualityReport] = None
     warnings: list[str] = []

@@ -362,6 +362,156 @@ class ECGAnalyzer:
         return result
 
     # ------------------------------------------------------------------
+    # HRV non-linear metrics (Poincaré, Sample Entropy, DFA)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _compute_hrv_nonlinear(rr: np.ndarray) -> dict:
+        """
+        Compute non-linear HRV metrics: Poincaré SD1/SD2, Sample Entropy, DFA α1.
+
+        Parameters
+        ----------
+        rr : 1-D array of RR intervals in ms
+
+        Returns
+        -------
+        dict with keys: sd1, sd2, sd1_sd2_ratio, sample_entropy, dfa_alpha1
+        """
+        diff_rr = np.diff(rr)
+        sd1 = float(np.std(diff_rr) / np.sqrt(2))
+        sd2 = float(np.sqrt(max(0.0, 2 * np.std(rr) ** 2 - sd1 ** 2)))
+        sd1_sd2_ratio = sd1 / sd2 if sd2 > 0 else None
+
+        # Sample Entropy approximation (no extra dependencies)
+        try:
+            def _sample_entropy(ts, m=2, r_tol=0.2):
+                r = r_tol * np.std(ts)
+                N = len(ts)
+
+                def count_matches(template, ts, r):
+                    count = 0
+                    for i in range(len(ts) - len(template)):
+                        if np.max(np.abs(ts[i:i + len(template)] - template)) < r:
+                            count += 1
+                    return count
+
+                B = sum(count_matches(ts[i:i + m], ts, r) for i in range(N - m)) / (N - m)
+                A = sum(count_matches(ts[i:i + m + 1], ts, r) for i in range(N - m - 1)) / (N - m - 1)
+                return -np.log(A / B) if B > 0 and A > 0 else None
+
+            sampen = _sample_entropy(rr) if len(rr) >= 20 else None
+        except Exception:
+            sampen = None
+
+        # DFA α1 (short-range, scale 4–16)
+        try:
+            def _dfa(ts, scale_min=4, scale_max=16):
+                ts = ts - np.mean(ts)
+                cumsum = np.cumsum(ts)
+                scales = np.unique(
+                    np.logspace(np.log10(scale_min), np.log10(scale_max), 8).astype(int)
+                )
+                flucts = []
+                for n in scales:
+                    n_segments = len(ts) // n
+                    if n_segments < 2:
+                        continue
+                    rms_list = []
+                    for seg in range(n_segments):
+                        seg_data = cumsum[seg * n:(seg + 1) * n]
+                        x = np.arange(len(seg_data))
+                        fit = np.polyfit(x, seg_data, 1)
+                        trend = np.polyval(fit, x)
+                        rms_list.append(np.sqrt(np.mean((seg_data - trend) ** 2)))
+                    flucts.append(np.mean(rms_list))
+                if len(flucts) >= 2:
+                    log_scales = np.log10(scales[:len(flucts)])
+                    log_flucts = np.log10(flucts)
+                    alfa1 = float(np.polyfit(log_scales, log_flucts, 1)[0])
+                    return alfa1
+                return None
+
+            alfa1 = _dfa(rr) if len(rr) >= 20 else None
+        except Exception:
+            alfa1 = None
+
+        return {
+            "sd1": sd1,
+            "sd2": sd2,
+            "sd1_sd2_ratio": sd1_sd2_ratio,
+            "sample_entropy": sampen,
+            "dfa_alpha1": alfa1,
+        }
+
+    # ------------------------------------------------------------------
+    # Arrhythmia detection (AFib suspicion, ectopic beats, HR class)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _detect_arrhythmia(rr: np.ndarray, peaks: np.ndarray, fs: int) -> dict:
+        """
+        Lightweight rule-based arrhythmia screening from RR intervals.
+
+        Parameters
+        ----------
+        rr    : 1-D array of RR intervals in ms (already artefact-filtered)
+        peaks : R-peak sample indices
+        fs    : sampling rate in Hz
+
+        Returns
+        -------
+        dict with keys: afib_suspected, afib_evidence, ectopic_beats,
+                        ectopic_ratio, heart_rate_class, rr_cv
+        """
+        results = {
+            "afib_suspected": False,
+            "afib_evidence": [],
+            "ectopic_beats": 0,
+            "ectopic_ratio": 0.0,
+            "heart_rate_class": "normal",
+            "rr_cv": 0.0,
+        }
+        if len(rr) < 5:
+            return results
+
+        mean_rr = np.mean(rr)
+        std_rr = np.std(rr)
+        cv = float(std_rr / mean_rr) if mean_rr > 0 else 0.0
+        results["rr_cv"] = round(cv, 4)
+
+        mean_hr = 60000.0 / mean_rr if mean_rr > 0 else 0.0
+        if mean_hr < 50:
+            results["heart_rate_class"] = "bradycardia"
+        elif mean_hr > 100:
+            results["heart_rate_class"] = "tachycardia"
+        else:
+            results["heart_rate_class"] = "normal"
+
+        # AFib: high RR irregularity + elevated RMSSD/meanRR
+        afib_evidence = []
+        if cv > 0.20:
+            afib_evidence.append(
+                f"High RR coefficient of variation: {cv:.3f} (>0.20)"
+            )
+        rmssd = float(np.sqrt(np.mean(np.diff(rr) ** 2)))
+        if rmssd / mean_rr > 0.15 and cv > 0.15:
+            afib_evidence.append(
+                f"Irregularity index elevated: RMSSD/meanRR={rmssd / mean_rr:.3f}"
+            )
+        results["afib_suspected"] = len(afib_evidence) >= 2
+        results["afib_evidence"] = afib_evidence
+
+        # Ectopic beats: RR < 80 % or > 130 % of preceding interval
+        ectopic = 0
+        for i in range(1, len(rr)):
+            ratio = rr[i] / rr[i - 1]
+            if ratio < 0.80 or ratio > 1.30:
+                ectopic += 1
+        results["ectopic_beats"] = ectopic
+        results["ectopic_ratio"] = round(ectopic / len(rr), 4)
+
+        return results
+
+    # ------------------------------------------------------------------
     # Main orchestrator
     # ------------------------------------------------------------------
     @staticmethod
@@ -371,6 +521,8 @@ class ECGAnalyzer:
         config: PreprocessingConfig,
         compute_hrv: bool = True,
         compute_morphology: bool = True,
+        compute_nonlinear: bool = True,
+        compute_arrhythmia: bool = True,
     ) -> dict:
         """
         Full ECG analysis pipeline.
@@ -389,6 +541,8 @@ class ECGAnalyzer:
             n_peaks, rr_intervals_ms,
             hrv_time (dict), hrv_freq (dict),
             morphology (dict),
+            hrv_nonlinear (dict),
+            arrhythmia (dict),
             warnings (list[str])
         """
         result: dict = {
@@ -397,6 +551,8 @@ class ECGAnalyzer:
             "hrv_time": None,
             "hrv_freq": None,
             "morphology": None,
+            "hrv_nonlinear": None,
+            "arrhythmia": None,
             "warnings": [],
         }
 
@@ -464,5 +620,21 @@ class ECGAnalyzer:
                     "qtc_ms": None,
                     "st_deviation_mv": None,
                 }
+
+        # ---- HRV non-linear -------------------------------------------
+        if compute_nonlinear and rr_ms.size >= 2:
+            try:
+                result["hrv_nonlinear"] = ECGAnalyzer._compute_hrv_nonlinear(rr_ms)
+            except Exception as exc:
+                result["warnings"].append(f"HRV non-linear computation failed: {exc}")
+
+        # ---- Arrhythmia detection -------------------------------------
+        if compute_arrhythmia and rr_ms.size >= 2:
+            try:
+                result["arrhythmia"] = ECGAnalyzer._detect_arrhythmia(
+                    rr_ms, r_peaks, fs
+                )
+            except Exception as exc:
+                result["warnings"].append(f"Arrhythmia detection failed: {exc}")
 
         return result

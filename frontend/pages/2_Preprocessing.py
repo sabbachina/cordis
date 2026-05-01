@@ -42,6 +42,21 @@ with col1:
     else:
         st.markdown("- PPG fondamentale: ~1–2 Hz (60–120 bpm)\n- Armoniche: fino a 8 Hz\n- Baseline: < 0.5 Hz")
 
+    if st.button("🔍 Analizza Qualità Segnale"):
+        with st.spinner("Calcolo SQI in corso..."):
+            try:
+                _backend_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    '..', 'backend'
+                )
+                sys.path.insert(0, _backend_dir)
+                from core.signal_quality import SignalQualityAnalyzer
+                sqi_result = SignalQualityAnalyzer.compute_sqi(sig, fs, signal_type)
+                st.session_state.sqi_result = sqi_result
+                st.success("✅ Analisi qualità completata!")
+            except Exception as e:
+                st.error(f"Errore calcolo SQI: {e}")
+
     if st.button("⚙️ Applica Preprocessing", type="primary"):
         with st.spinner("Filtraggio in corso..."):
             try:
@@ -72,6 +87,15 @@ with col1:
 
 with col2:
     st.subheader("Confronto: Raw vs Preprocessato")
+
+    # SQI widget — mostrato se disponibile
+    sqi_result = st.session_state.get("sqi_result")
+    if sqi_result is not None:
+        from components.biomarker_panel import render_sqi_widget
+        render_sqi_widget(sqi_result)
+        if sqi_result.get("overall_score", 100) < 40:
+            st.error("Qualità segnale insufficiente — analisi potrebbe essere inaffidabile")
+
     clean = st.session_state.get("clean_signal")
     if clean is not None:
         preview_len = min(len(sig), fs * 10)

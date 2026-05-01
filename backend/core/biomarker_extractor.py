@@ -7,6 +7,7 @@ Usage
     extractor = BiomarkerExtractor()
     report = extractor.extract(signal, fs, signal_type, config,
                                compute_hrv=True, compute_morphology=True,
+                               compute_nonlinear=True, compute_arrhythmia=True,
                                warnings_list=[])
 """
 
@@ -24,6 +25,9 @@ from models.biomarker import (
     HRVFreqReport,
     ECGMorphologyReport,
     PPGVascularReport,
+    HRVNonlinearReport,
+    ArrhythmiaReport,
+    SignalQualityReport,
     BiomarkerReport,
 )
 from core.ecg_analyzer import ECGAnalyzer
@@ -100,9 +104,9 @@ class BiomarkerExtractor:
         return RiskLevel.ABNORMAL
 
     # ------------------------------------------------------------------
-    # BiomarkerValue factory
+    # BiomarkerValue factory — key-based (uses hardcoded threshold table)
     # ------------------------------------------------------------------
-    def _make_biomarker(
+    def _make_biomarker_from_key(
         self,
         key: str,
         value: Optional[float],
@@ -117,10 +121,53 @@ class BiomarkerExtractor:
         risk_level = self._classify(value, *thresholds)
 
         # Round to 3 decimal places for cleanliness (keep None as-is)
-        display_value = round(float(value), 3) if value is not None and not np.isnan(value) else None
+        display_value = (
+            round(float(value), 3)
+            if value is not None and not (isinstance(value, float) and np.isnan(value))
+            else None
+        )
 
         return BiomarkerValue(
             name=key,
+            value=display_value,
+            unit=unit,
+            normal_range=normal_range,
+            risk_level=risk_level,
+            description=description,
+        )
+
+    # ------------------------------------------------------------------
+    # BiomarkerValue factory — explicit thresholds (for new biomarkers)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _make_biomarker(
+        name: str,
+        value: Optional[float],
+        unit: str,
+        normal_range: tuple,
+        thresholds: tuple,
+        description: str,
+    ) -> BiomarkerValue:
+        """
+        Build a BiomarkerValue with explicitly supplied thresholds.
+
+        Parameters
+        ----------
+        name         : display name
+        value        : raw float (may be None / NaN)
+        unit         : physical unit string
+        normal_range : (normal_min, normal_max)
+        thresholds   : (normal_min, normal_max, borderline_low, borderline_high)
+        description  : clinical description
+        """
+        display_value = (
+            round(float(value), 4)
+            if value is not None and not (isinstance(value, float) and np.isnan(value))
+            else None
+        )
+        risk_level = BiomarkerExtractor._classify(value, *thresholds)
+        return BiomarkerValue(
+            name=name,
             value=display_value,
             unit=unit,
             normal_range=normal_range,
@@ -133,25 +180,25 @@ class BiomarkerExtractor:
     # ------------------------------------------------------------------
     def _build_hrv_time(self, hrv_time_dict: dict) -> HRVTimeReport:
         return HRVTimeReport(
-            mean_hr=self._make_biomarker(
+            mean_hr=self._make_biomarker_from_key(
                 "mean_hr",
                 hrv_time_dict.get("mean_hr"),
                 "bpm",
                 "Mean heart rate derived from RR intervals.",
             ),
-            sdnn=self._make_biomarker(
+            sdnn=self._make_biomarker_from_key(
                 "sdnn",
                 hrv_time_dict.get("sdnn"),
                 "ms",
                 "Standard deviation of all NN intervals — overall HRV.",
             ),
-            rmssd=self._make_biomarker(
+            rmssd=self._make_biomarker_from_key(
                 "rmssd",
                 hrv_time_dict.get("rmssd"),
                 "ms",
                 "Root mean square of successive differences — short-term vagal activity.",
             ),
-            pnn50=self._make_biomarker(
+            pnn50=self._make_biomarker_from_key(
                 "pnn50",
                 hrv_time_dict.get("pnn50"),
                 "%",
@@ -189,7 +236,7 @@ class BiomarkerExtractor:
             vlf_power=_bv_power("vlf_power", "Very-low-frequency HRV power (0.003–0.04 Hz)."),
             lf_power=_bv_power("lf_power",   "Low-frequency HRV power (0.04–0.15 Hz) — sympatho-vagal balance."),
             hf_power=_bv_power("hf_power",   "High-frequency HRV power (0.15–0.40 Hz) — parasympathetic activity."),
-            lf_hf_ratio=self._make_biomarker(
+            lf_hf_ratio=self._make_biomarker_from_key(
                 "lf_hf_ratio",
                 hrv_freq_dict.get("lf_hf_ratio"),
                 "ratio",
@@ -202,25 +249,25 @@ class BiomarkerExtractor:
     # ------------------------------------------------------------------
     def _build_ecg_morphology(self, morphology_dict: dict) -> ECGMorphologyReport:
         return ECGMorphologyReport(
-            pr_interval_ms=self._make_biomarker(
+            pr_interval_ms=self._make_biomarker_from_key(
                 "pr_interval_ms",
                 morphology_dict.get("pr_interval_ms"),
                 "ms",
                 "PR interval (P-wave onset to QRS onset) — AV conduction time.",
             ),
-            qrs_duration_ms=self._make_biomarker(
+            qrs_duration_ms=self._make_biomarker_from_key(
                 "qrs_duration_ms",
                 morphology_dict.get("qrs_duration_ms"),
                 "ms",
                 "QRS complex duration — ventricular depolarization time.",
             ),
-            qtc_ms=self._make_biomarker(
+            qtc_ms=self._make_biomarker_from_key(
                 "qtc_ms",
                 morphology_dict.get("qtc_ms"),
                 "ms",
                 "Heart-rate corrected QT interval (Bazett formula) — repolarization.",
             ),
-            st_deviation_mv=self._make_biomarker(
+            st_deviation_mv=self._make_biomarker_from_key(
                 "st_deviation_mv",
                 morphology_dict.get("st_deviation_mv"),
                 "mV",
@@ -243,19 +290,79 @@ class BiomarkerExtractor:
             description="Mean systolic peak-to-trough amplitude (normalized signal).",
         )
 
+        # stiffness_index: informational
+        si = vascular_dict.get("stiffness_index")
+        si_bv: Optional[BiomarkerValue] = None
+        if si is not None:
+            si_bv = BiomarkerValue(
+                name="stiffness_index",
+                value=round(float(si), 4) if not np.isnan(float(si)) else None,
+                unit="a.u.",
+                normal_range=(5.0, 10.0),
+                risk_level=RiskLevel.UNKNOWN,
+                description="Stiffness Index — proxy for arterial wall stiffness.",
+            )
+
+        # reflection_index
+        ri = vascular_dict.get("reflection_index")
+        ri_bv: Optional[BiomarkerValue] = None
+        if ri is not None:
+            ri_bv = self._make_biomarker(
+                "Reflection Index",
+                ri,
+                "%",
+                (0.0, 50.0),
+                (0.0, 50.0, -5.0, 80.0),
+                "Reflection Index (RI) — dicrotic notch depth relative to systolic amplitude.",
+            )
+
         return PPGVascularReport(
             pulse_amplitude=pulse_amp_bv,
-            augmentation_index=self._make_biomarker(
+            augmentation_index=self._make_biomarker_from_key(
                 "augmentation_index",
                 vascular_dict.get("augmentation_index"),
                 "%",
                 "Augmentation Index (AIx) — arterial stiffness proxy.",
             ),
-            respiratory_rate=self._make_biomarker(
+            stiffness_index=si_bv,
+            reflection_index=ri_bv,
+            respiratory_rate=self._make_biomarker_from_key(
                 "respiratory_rate",
                 vascular_dict.get("respiratory_rate"),
                 "breaths/min",
                 "Respiratory rate estimated from PPG amplitude modulation.",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # HRV non-linear sub-report
+    # ------------------------------------------------------------------
+    def _build_hrv_nonlinear(self, nl: dict) -> HRVNonlinearReport:
+        return HRVNonlinearReport(
+            sd1=self._make_biomarker(
+                "SD1 (Poincaré)", nl.get("sd1"), "ms",
+                (10.0, 50.0), (5.0, 10.0, 50.0, 80.0),
+                "Short-term HRV variability (Poincaré SD1).",
+            ),
+            sd2=self._make_biomarker(
+                "SD2 (Poincaré)", nl.get("sd2"), "ms",
+                (20.0, 80.0), (10.0, 20.0, 80.0, 120.0),
+                "Long-term HRV variability (Poincaré SD2).",
+            ),
+            sd1_sd2_ratio=self._make_biomarker(
+                "SD1/SD2 Ratio", nl.get("sd1_sd2_ratio"), "ratio",
+                (0.5, 1.5), (0.3, 0.5, 1.5, 2.5),
+                "Autonomic balance — ratio of short-term to long-term variability.",
+            ),
+            sample_entropy=self._make_biomarker(
+                "Sample Entropy", nl.get("sample_entropy"), "a.u.",
+                (1.0, 2.5), (0.5, 1.0, 2.5, 3.5),
+                "Signal complexity / unpredictability of RR intervals.",
+            ),
+            dfa_alpha1=self._make_biomarker(
+                "DFA α1", nl.get("dfa_alpha1"), "a.u.",
+                (0.75, 1.25), (0.5, 0.75, 1.25, 1.5),
+                "Short-range fractal correlation (Detrended Fluctuation Analysis).",
             ),
         )
 
@@ -270,6 +377,8 @@ class BiomarkerExtractor:
         config: PreprocessingConfig,
         compute_hrv: bool = True,
         compute_morphology: bool = True,
+        compute_nonlinear: bool = True,
+        compute_arrhythmia: bool = True,
         warnings_list: Optional[list[str]] = None,
     ) -> BiomarkerReport:
         """
@@ -277,13 +386,15 @@ class BiomarkerExtractor:
 
         Parameters
         ----------
-        signal            : preprocessed 1-D signal array (float64)
-        fs                : sampling rate in Hz
-        signal_type       : SignalType.ECG or SignalType.PPG
-        config            : PreprocessingConfig (forwarded to analyzer)
-        compute_hrv       : whether to compute HRV biomarkers
-        compute_morphology: whether to compute ECG morphology or PPG vascular indices
-        warnings_list     : external list to which analysis warnings are appended
+        signal             : preprocessed 1-D signal array (float64)
+        fs                 : sampling rate in Hz
+        signal_type        : SignalType.ECG or SignalType.PPG
+        config             : PreprocessingConfig (forwarded to analyzer)
+        compute_hrv        : whether to compute HRV biomarkers
+        compute_morphology : whether to compute ECG morphology or PPG vascular indices
+        compute_nonlinear  : whether to compute non-linear HRV (ECG only)
+        compute_arrhythmia : whether to run arrhythmia screening (ECG only)
+        warnings_list      : external list to which analysis warnings are appended
 
         Returns
         -------
@@ -304,6 +415,8 @@ class BiomarkerExtractor:
                 config=config,
                 compute_hrv=compute_hrv,
                 compute_morphology=compute_morphology,
+                compute_nonlinear=compute_nonlinear,
+                compute_arrhythmia=compute_arrhythmia,
             )
 
             # Propagate analyzer warnings
@@ -313,6 +426,8 @@ class BiomarkerExtractor:
             hrv_time_report: Optional[HRVTimeReport] = None
             hrv_freq_report: Optional[HRVFreqReport] = None
             ecg_morph_report: Optional[ECGMorphologyReport] = None
+            hrv_nl_report: Optional[HRVNonlinearReport] = None
+            arrhythmia_report: Optional[ArrhythmiaReport] = None
 
             if compute_hrv:
                 if raw.get("hrv_time"):
@@ -322,6 +437,20 @@ class BiomarkerExtractor:
 
             if compute_morphology and raw.get("morphology"):
                 ecg_morph_report = self._build_ecg_morphology(raw["morphology"])
+
+            if compute_nonlinear and raw.get("hrv_nonlinear"):
+                hrv_nl_report = self._build_hrv_nonlinear(raw["hrv_nonlinear"])
+
+            if compute_arrhythmia and raw.get("arrhythmia"):
+                arr = raw["arrhythmia"]
+                arrhythmia_report = ArrhythmiaReport(
+                    afib_suspected=arr["afib_suspected"],
+                    afib_evidence=arr["afib_evidence"],
+                    ectopic_beats=arr["ectopic_beats"],
+                    ectopic_ratio=arr["ectopic_ratio"],
+                    heart_rate_class=arr["heart_rate_class"],
+                    rr_cv=arr["rr_cv"],
+                )
 
             return BiomarkerReport(
                 signal_type=SignalType.ECG,
@@ -333,6 +462,8 @@ class BiomarkerExtractor:
                 ecg_morphology=ecg_morph_report,
                 ppg_vascular=None,
                 ml_anomaly=None,
+                hrv_nonlinear=hrv_nl_report,
+                arrhythmia=arrhythmia_report,
                 warnings=list(warnings_list),
             )
 

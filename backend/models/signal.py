@@ -29,3 +29,6 @@ class AnalysisRequest(BaseModel):
     compute_hrv: bool = True
     compute_morphology: bool = True
     compute_ml: bool = True
+    compute_nonlinear: bool = True
+    compute_arrhythmia: bool = True
+    compute_signal_quality: bool = True
