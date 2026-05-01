@@ -35,6 +35,17 @@ with col1:
     compute_arrhythmia = st.checkbox("Analisi Aritmia (AFib, ectopici)", value=True)
     compute_signal_quality = st.checkbox("Signal Quality Index", value=True)
 
+    st.markdown("---")
+    st.subheader("🔬 Kubios Scientific")
+    compute_advanced = st.checkbox("HRV Avanzato (DFA α2, ApEn, FuzzyEn, MSE, RQA, LLE)", value=True,
+                                   help="Richiede ≥ 128 battiti per DFA α2; ≥ 10 battiti per gli altri.")
+    compute_autonomic = st.checkbox("Indici Autonomici (PNS, SNS, Baevsky)", value=True,
+                                    help="Parasympathetic/Sympathetic index e Baevsky Stress Index.")
+    compute_timefreq = st.checkbox("Analisi Tempo-Frequenza (STFT/CWT)", value=False,
+                                   help="Computazionalmente costoso. Richiede segnale ≥ 30s.")
+    artifact_correction = st.checkbox("Correzione Artefatti RR (Kubios-like)", value=True,
+                                      help="Rilevamento e interpolazione spline degli artefatti negli intervalli RR.")
+
     min_duration = len(sig) / fs
     if min_duration < 30 and compute_hrv:
         st.warning(f"⚠️ Segnale di {min_duration:.0f}s: HRV frequenziale richiede ≥ 30s per risultati affidabili.")
@@ -58,6 +69,10 @@ with col1:
                 "compute_nonlinear": compute_nonlinear,
                 "compute_arrhythmia": compute_arrhythmia,
                 "compute_signal_quality": compute_signal_quality,
+                "compute_advanced": compute_advanced,
+                "compute_autonomic": compute_autonomic,
+                "compute_timefreq": compute_timefreq,
+                "artifact_correction": artifact_correction,
             }
             with st.spinner("Analisi in corso (può richiedere 10-30s)..."):
                 try:
@@ -85,17 +100,28 @@ with col2:
             else:
                 st.success(f"✅ Nessuna anomalia ML (score: {ml['anomaly_score']:.3f})")
 
-        # HRV Temporale
+        # Artifact correction summary
+        ac = report.get("artifact_correction")
+        if ac:
+            if ac["n_artifacts"] > 0:
+                st.info(f"🔧 **Correzione artefatti**: {ac['n_artifacts']} su {ac['n_total_beats']} battiti "
+                        f"({ac['artifact_pct']:.1f}%) — qualità: **{ac['quality_label']}**")
+            else:
+                st.success(f"✅ Nessun artefatto RR rilevato ({ac['n_total_beats']} battiti)")
+
+        # HRV Temporale (esteso Kubios)
         if report.get("hrv_time"):
             hrv_t = report["hrv_time"]
-            bms = [hrv_t["mean_hr"], hrv_t["sdnn"], hrv_t["rmssd"], hrv_t["pnn50"], hrv_t["pnn20"]]
-            render_biomarker_section("📊 HRV — Dominio Temporale", bms)
+            base_bms = [hrv_t["mean_hr"], hrv_t["sdnn"], hrv_t["rmssd"], hrv_t["pnn50"], hrv_t["pnn20"]]
+            kubios_bms = [hrv_t[k] for k in ("nn50", "sdann", "sdnni", "hrvi", "tinn") if hrv_t.get(k)]
+            render_biomarker_section("📊 HRV — Dominio Temporale", base_bms + kubios_bms)
 
-        # HRV Frequenziale
+        # HRV Frequenziale (esteso Kubios)
         if report.get("hrv_freq"):
             hrv_f = report["hrv_freq"]
-            bms = [hrv_f["vlf_power"], hrv_f["lf_power"], hrv_f["hf_power"], hrv_f["lf_hf_ratio"]]
-            render_biomarker_section("📈 HRV — Dominio Frequenziale", bms)
+            base_bms = [hrv_f["vlf_power"], hrv_f["lf_power"], hrv_f["hf_power"], hrv_f["lf_hf_ratio"]]
+            kubios_bms = [hrv_f[k] for k in ("total_power", "lfnu", "hfnu") if hrv_f.get(k)]
+            render_biomarker_section("📈 HRV — Dominio Frequenziale", base_bms + kubios_bms)
 
             vlf = hrv_f["vlf_power"]["value"] or 0
             lf = hrv_f["lf_power"]["value"] or 0
@@ -119,6 +145,35 @@ with col2:
         if report.get("hrv_nonlinear"):
             from components.biomarker_panel import render_nonlinear_section
             render_nonlinear_section(report["hrv_nonlinear"])
+
+        # HRV Avanzato Kubios
+        if report.get("hrv_advanced"):
+            adv = report["hrv_advanced"]
+            adv_bms = [adv[k] for k in (
+                "dfa_alpha2", "approximate_entropy", "fuzzy_entropy",
+                "mse_slope", "rqa_rr_pct", "rqa_det", "rqa_entr", "lyapunov_exponent"
+            ) if adv.get(k)]
+            if adv_bms:
+                render_biomarker_section("🔬 HRV Avanzato (Kubios Scientific)", adv_bms)
+
+        # Autonomic Indices
+        if report.get("autonomic"):
+            auto = report["autonomic"]
+            auto_bms = [auto[k] for k in ("pns_index", "sns_index", "baevsky_stress_index", "autonomic_balance") if auto.get(k)]
+            if auto_bms:
+                render_biomarker_section("🫀 Indici Autonomici (SNS/PNS)", auto_bms)
+
+        # Time-Frequency summary
+        if report.get("time_freq"):
+            tf = report["time_freq"]
+            st.subheader("📡 Analisi Tempo-Frequenza")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("STFT", "✅" if tf["has_stft"] else "—")
+            c2.metric("CWT Morlet", "✅" if tf["has_cwt"] else "—")
+            if tf.get("lf_hf_variability") is not None:
+                c3.metric("Variabilità LF/HF", f"{tf['lf_hf_variability']:.3f}")
+            if tf.get("dominant_lf_time_pct") is not None:
+                st.info(f"Dominanza LF (simpatica) nel {tf['dominant_lf_time_pct']:.1f}% del tempo.")
 
         # Aritmia
         if report.get("arrhythmia"):
