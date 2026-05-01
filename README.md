@@ -1,5 +1,9 @@
 # Cordis
 
+<p align="center">
+  <img src="logo.png" alt="Cordis logo" width="220"/>
+</p>
+
 ![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green) ![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 > **FOR RESEARCH USE ONLY — NOT CE-MARKED MEDICAL DEVICE**

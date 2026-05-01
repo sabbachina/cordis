@@ -1,11 +1,14 @@
 import streamlit as st
 import sys, os
+from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.i18n import t, render_language_selector
 
+_LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logo.png")
+
 st.set_page_config(
     page_title="Cordis",
-    page_icon="",
+    page_icon=Image.open(_LOGO),
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -26,7 +29,6 @@ if "biomarker_report" not in st.session_state:
 if "lang" not in st.session_state:
     st.session_state.lang = "it"
 
-st.sidebar.title(t("sidebar_title"))
 render_language_selector()
 st.sidebar.markdown("---")
 
