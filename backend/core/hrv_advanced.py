@@ -1,5 +1,5 @@
 """
-Advanced HRV nonlinear analysis — Kubios HRV Scientific equivalent.
+Advanced HRV nonlinear analysis — analisi HRV scientifica avanzata.
 All methods accept rr: np.ndarray (RR intervals in milliseconds).
 """
 import numpy as np

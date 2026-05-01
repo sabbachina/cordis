@@ -66,7 +66,7 @@ class HRVNonlinearReport(BaseModel):
 
 
 class HRVAdvancedReport(BaseModel):
-    """Advanced nonlinear HRV — Kubios Scientific level."""
+    """Advanced nonlinear HRV — HRV Scientifico level."""
     dfa_alpha2: Optional[BiomarkerValue] = None
     approximate_entropy: Optional[BiomarkerValue] = None
     fuzzy_entropy: Optional[BiomarkerValue] = None

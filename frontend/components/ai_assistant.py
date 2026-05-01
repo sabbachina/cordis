@@ -101,7 +101,7 @@ def build_context(session_state: dict) -> str:
         ("hrv_time",       "HRV Time Domain"),
         ("hrv_freq",       "HRV Frequency Domain"),
         ("hrv_nonlinear",  "HRV Nonlinear"),
-        ("hrv_advanced",   "HRV Advanced (Kubios Scientific)"),
+        ("hrv_advanced",   "HRV Advanced (HRV Scientifico)"),
         ("autonomic",      "Autonomic Indices"),
         ("ecg_morphology", "ECG Morphology"),
         ("ppg_vascular",   "PPG Vascular"),
@@ -150,7 +150,7 @@ def build_system_prompt(context: str, lang: str = "it") -> str:
             "You support clinicians and researchers in understanding the clinical significance "
             "of the analysis results shown below.\n\n"
             "Guidelines:\n"
-            "- Interpret biomarkers using Task Force 1996, ESC/AHA guidelines, and Kubios HRV references.\n"
+            "- Interpret biomarkers using Task Force 1996, ESC/AHA guidelines, and Task Force 1996 / Shaffer & Ginsberg 2017 references.\n"
             "- When a value is flagged ABNORMAL or BORDERLINE, explain the clinical meaning concisely.\n"
             "- Always remind the user that results are FOR RESEARCH USE ONLY and do not constitute a diagnosis.\n"
             "- Be concise but precise. Use bullet points when listing multiple findings.\n"
@@ -163,7 +163,7 @@ def build_system_prompt(context: str, lang: str = "it") -> str:
             "Supporti clinici e ricercatori nel comprendere il significato clinico "
             "dei risultati mostrati di seguito.\n\n"
             "Linee guida:\n"
-            "- Interpreta i biomarker secondo le linee guida Task Force 1996, ESC/AHA e Kubios HRV.\n"
+            "- Interpreta i biomarker secondo le linee guida Task Force 1996, ESC/AHA e analisi HRV avanzata.\n"
             "- Quando un valore è ANOMALO o BORDERLINE, spiega il significato clinico in modo conciso.\n"
             "- Ricorda sempre che i risultati sono SOLO PER RICERCA e non costituiscono diagnosi.\n"
             "- Sii conciso ma preciso. Usa elenchi puntati per più osservazioni.\n"

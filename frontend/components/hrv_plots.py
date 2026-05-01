@@ -109,7 +109,7 @@ def plot_rr_histogram(rr_intervals_ms: list) -> go.Figure:
 
 
 def plot_stft_heatmap(stft_data: dict) -> go.Figure:
-    """Heatmap STFT power over time — Kubios-style time-frequency spectrogram."""
+    """Heatmap STFT power over time — report clinico time-frequency spectrogram."""
     if not stft_data or not stft_data.get("times"):
         fig = go.Figure()
         fig.add_annotation(

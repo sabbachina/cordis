@@ -439,7 +439,7 @@ class BiomarkerExtractor:
         )
 
     # ------------------------------------------------------------------
-    # HRV advanced (Kubios Scientific level) sub-report
+    # HRV advanced (HRV Scientifico level) sub-report
     # ------------------------------------------------------------------
     def _build_hrv_advanced(self, adv: dict) -> HRVAdvancedReport:
         return HRVAdvancedReport(
@@ -493,12 +493,12 @@ class BiomarkerExtractor:
             pns_index=self._make_biomarker(
                 "PNS Index", auto.get("pns_index"), "a.u.",
                 (-1.0, 1.0), (-1.0, 1.0, -2.0, 2.0),
-                "Parasympathetic Nervous System index (Kubios z-score of mean_RR, RMSSD, SD1).",
+                "Parasympathetic Nervous System index (z-score normalizzato of mean_RR, RMSSD, SD1).",
             ),
             sns_index=self._make_biomarker(
                 "SNS Index", auto.get("sns_index"), "a.u.",
                 (-1.0, 1.0), (-1.0, 1.0, -2.0, 2.0),
-                "Sympathetic Nervous System index (Kubios z-score of mean_HR, LF/HF, SD2).",
+                "Sympathetic Nervous System index (z-score normalizzato of mean_HR, LF/HF, SD2).",
             ),
             baevsky_stress_index=self._make_biomarker(
                 "Baevsky SI", auto.get("baevsky_stress_index"), "a.u.",

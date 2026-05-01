@@ -1,5 +1,5 @@
 """
-RR interval artifact detection and correction — Kubios-like pipeline.
+RR interval artifact detection and correction — algoritmo adattivo pipeline.
 Detects ectopic beats, missing beats, and signal dropouts in RR series.
 """
 import numpy as np
@@ -19,7 +19,7 @@ class ArtifactCorrector:
           "threshold"      — physiological limits only
           "quotient"       — local ratio filter
           "moving_median"  — adaptive median filter
-          "combined"       — all three (Kubios default)
+          "combined"       — all three (default)
         """
         rr = np.asarray(rr, dtype=float)
         if len(rr) < 3:

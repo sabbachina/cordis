@@ -1,5 +1,5 @@
 """
-Kubios-style PDF report generator.
+report clinico PDF report generator.
 Primary: reportlab.platypus (A4, 2-column layout)
 Fallback: matplotlib PdfPages
 """
@@ -16,7 +16,7 @@ def generate_pdf_report(
     peaks: Optional[np.ndarray] = None,
     signal_type: str = "ECG",
 ) -> bytes:
-    """Generate a Kubios-style PDF report. Returns PDF bytes."""
+    """Generate a report clinico PDF report. Returns PDF bytes."""
     try:
         return _generate_with_reportlab(report, signal, fs, peaks, signal_type)
     except Exception as e:

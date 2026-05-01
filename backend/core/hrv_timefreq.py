@@ -1,6 +1,6 @@
 """
 Time-Frequency Analysis for HRV — STFT and CWT (Morlet wavelet).
-Equivalent to Kubios HRV time-frequency spectrogram.
+Equivalent to spettrogramma HRV tempo-frequenza.
 Uses scipy.signal only — no additional dependencies.
 """
 import numpy as np

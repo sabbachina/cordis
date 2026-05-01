@@ -1,6 +1,6 @@
 """
 Autonomic nervous system indices — PNS, SNS, Baevsky Stress Index.
-Based on Kubios HRV documentation and Shaffer & Ginsberg (2017).
+Based on letteratura HRV (Shaffer & Ginsberg 2017) and Shaffer & Ginsberg (2017).
 """
 import numpy as np
 from typing import Optional
@@ -25,7 +25,7 @@ class AutonomicIndexCalculator:
                           sd1_ms: float) -> Optional[float]:
         """
         PNS Index — parasympathetic nervous system activity.
-        Formula (Kubios): mean of z-scores of (mean_RR, RMSSD, SD1) using reference population.
+        Formula (HRV avanzato): mean of z-scores of (mean_RR, RMSSD, SD1) using reference population.
         Range: -2 to +2. Positive = high vagal/parasympathetic activity (resting, recovered).
         """
         try:
@@ -46,7 +46,7 @@ class AutonomicIndexCalculator:
                           sd2_ms: float) -> Optional[float]:
         """
         SNS Index — sympathetic nervous system activity.
-        Formula (Kubios): mean of z-scores of (mean_HR, LF/HF, SD2).
+        Formula (HRV avanzato): mean of z-scores of (mean_HR, LF/HF, SD2).
         Range: -2 to +2. Positive = high sympathetic activity (stress, exercise).
         """
         try:

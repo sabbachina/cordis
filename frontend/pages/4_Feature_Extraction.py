@@ -38,7 +38,7 @@ with col1:
     compute_signal_quality = st.checkbox(t("chk_sqi"), value=True)
 
     st.markdown("---")
-    st.subheader(t("kubios_section"))
+    st.subheader(t("hrv_advanced_section"))
     compute_advanced = st.checkbox(t("chk_advanced"), value=True, help=t("chk_advanced_help"))
     compute_autonomic = st.checkbox(t("chk_autonomic"), value=True, help=t("chk_autonomic_help"))
     compute_timefreq = st.checkbox(t("chk_timefreq"), value=False, help=t("chk_timefreq_help"))
@@ -107,14 +107,14 @@ with col2:
         if report.get("hrv_time"):
             hrv_t = report["hrv_time"]
             base_bms = [hrv_t["mean_hr"], hrv_t["sdnn"], hrv_t["rmssd"], hrv_t["pnn50"], hrv_t["pnn20"]]
-            kubios_bms = [hrv_t[k] for k in ("nn50", "sdann", "sdnni", "hrvi", "tinn") if hrv_t.get(k)]
-            render_biomarker_section(t("sec_hrv_time"), base_bms + kubios_bms)
+            ext_bms = [hrv_t[k] for k in ("nn50", "sdann", "sdnni", "hrvi", "tinn") if hrv_t.get(k)]
+            render_biomarker_section(t("sec_hrv_time"), base_bms + ext_bms)
 
         if report.get("hrv_freq"):
             hrv_f = report["hrv_freq"]
             base_bms = [hrv_f["vlf_power"], hrv_f["lf_power"], hrv_f["hf_power"], hrv_f["lf_hf_ratio"]]
-            kubios_bms = [hrv_f[k] for k in ("total_power", "lfnu", "hfnu") if hrv_f.get(k)]
-            render_biomarker_section(t("sec_hrv_freq"), base_bms + kubios_bms)
+            ext_bms = [hrv_f[k] for k in ("total_power", "lfnu", "hfnu") if hrv_f.get(k)]
+            render_biomarker_section(t("sec_hrv_freq"), base_bms + ext_bms)
 
             vlf = hrv_f["vlf_power"]["value"] or 0
             lf = hrv_f["lf_power"]["value"] or 0
