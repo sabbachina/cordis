@@ -652,7 +652,7 @@ def render_language_selector() -> None:
     import os
     _logo = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "logo.png")
     if os.path.exists(_logo):
-        st.sidebar.image(_logo, use_container_width=True)
+        st.sidebar.image(_logo, use_column_width=True)
         st.sidebar.markdown("---")
 
     if "lang" not in st.session_state:
