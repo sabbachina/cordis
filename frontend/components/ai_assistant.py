@@ -12,9 +12,9 @@ import httpx
 
 GEMINI_MODELS = [
     "gemini-2.0-flash",
-    "gemini-2.0-flash-thinking-exp",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-pro-preview-05-06",
 ]
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -204,14 +204,27 @@ class GeminiAssistant:
 
     @staticmethod
     def validate_key(api_key: str, model: str = "gemini-2.0-flash") -> tuple[bool, str]:
-        """Quick connectivity check. Returns (ok, error_message)."""
-        url = f"{_BASE}/{model}:generateContent?key={api_key}"
-        body = {
-            "contents": [{"role": "user", "parts": [{"text": "Reply with exactly: OK"}]}],
-            "generationConfig": {"maxOutputTokens": 5},
-        }
+        """
+        Two-step check:
+        1. Verify the key is valid by calling ListModels.
+        2. Verify the chosen model is reachable with a minimal generateContent call.
+        Returns (ok, error_message).
+        """
         try:
-            resp = httpx.post(url, json=body, timeout=15.0)
+            # Step 1 — key validity
+            list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}&pageSize=1"
+            r = httpx.get(list_url, timeout=10.0)
+            if r.status_code != 200:
+                msg = r.json().get("error", {}).get("message", r.text[:200])
+                return False, msg
+
+            # Step 2 — model availability
+            gen_url = f"{_BASE}/{model}:generateContent?key={api_key}"
+            body = {
+                "contents": [{"role": "user", "parts": [{"text": "Reply with exactly: OK"}]}],
+                "generationConfig": {"maxOutputTokens": 5},
+            }
+            resp = httpx.post(gen_url, json=body, timeout=15.0)
             if resp.status_code == 200:
                 return True, ""
             err_body = resp.json()
