@@ -10,14 +10,47 @@ from typing import Iterator
 
 import httpx
 
-GEMINI_MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-pro-preview-05-06",
-]
+# Fallback list shown before a key is validated
+GEMINI_MODELS_DEFAULT = ["gemini-2.0-flash"]
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+def list_available_models(api_key: str) -> list[str]:
+    """
+    Return model IDs that support generateContent, sorted with
+    gemini-2.x first. Falls back to GEMINI_MODELS_DEFAULT on any error.
+    """
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}&pageSize=100"
+        r = httpx.get(url, timeout=10.0)
+        if r.status_code != 200:
+            return GEMINI_MODELS_DEFAULT
+        models = r.json().get("models", [])
+        ids = []
+        for m in models:
+            name = m.get("name", "")          # e.g. "models/gemini-2.0-flash"
+            methods = m.get("supportedGenerationMethods", [])
+            if "generateContent" in methods and "gemini" in name:
+                model_id = name.replace("models/", "")
+                # Skip embedding / vision-only / aqa variants
+                if any(x in model_id for x in ("embedding", "aqa", "imagen", "vision")):
+                    continue
+                ids.append(model_id)
+        # Sort: 2.5 > 2.0 > 1.5, pro > flash > lite
+        def sort_key(mid: str):
+            score = 0
+            if "2.5" in mid: score += 300
+            elif "2.0" in mid: score += 200
+            elif "1.5" in mid: score += 100
+            if "pro" in mid: score += 20
+            elif "flash" in mid: score += 10
+            if "preview" in mid or "exp" in mid: score -= 1
+            return -score
+        ids.sort(key=sort_key)
+        return ids if ids else GEMINI_MODELS_DEFAULT
+    except Exception:
+        return GEMINI_MODELS_DEFAULT
 
 
 # ---------------------------------------------------------------------------
@@ -203,32 +236,37 @@ class GeminiAssistant:
                         continue
 
     @staticmethod
-    def validate_key(api_key: str, model: str = "gemini-2.0-flash") -> tuple[bool, str]:
+    def validate_key(api_key: str, model: str = "") -> tuple[bool, str, list[str]]:
         """
         Two-step check:
-        1. Verify the key is valid by calling ListModels.
-        2. Verify the chosen model is reachable with a minimal generateContent call.
-        Returns (ok, error_message).
+        1. ListModels — verifies the key and returns available models.
+        2. generateContent on the first available model — confirms generation works.
+        Returns (ok, error_message, available_model_ids).
         """
         try:
-            # Step 1 — key validity
+            # Step 1 — key validity + fetch live model list
+            available = list_available_models(api_key)
+
+            # If list_available_models fell back to default it means the key may be invalid;
+            # confirm by directly probing the list endpoint.
             list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}&pageSize=1"
             r = httpx.get(list_url, timeout=10.0)
             if r.status_code != 200:
                 msg = r.json().get("error", {}).get("message", r.text[:200])
-                return False, msg
+                return False, msg, []
 
-            # Step 2 — model availability
-            gen_url = f"{_BASE}/{model}:generateContent?key={api_key}"
+            # Step 2 — pick the model to test (prefer user choice if in available list)
+            test_model = model if model in available else (available[0] if available else "gemini-2.0-flash")
+            gen_url = f"{_BASE}/{test_model}:generateContent?key={api_key}"
             body = {
                 "contents": [{"role": "user", "parts": [{"text": "Reply with exactly: OK"}]}],
                 "generationConfig": {"maxOutputTokens": 5},
             }
             resp = httpx.post(gen_url, json=body, timeout=15.0)
             if resp.status_code == 200:
-                return True, ""
+                return True, "", available
             err_body = resp.json()
             msg = err_body.get("error", {}).get("message", resp.text[:200])
-            return False, msg
+            return False, msg, available
         except Exception as exc:
-            return False, str(exc)
+            return False, str(exc), []

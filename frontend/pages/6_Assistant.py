@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.i18n import t, render_language_selector
 from components.ai_assistant import (
     GeminiAssistant,
-    GEMINI_MODELS,
+    GEMINI_MODELS_DEFAULT,
     build_context,
     build_system_prompt,
 )
@@ -24,9 +24,12 @@ api_key = st.sidebar.text_input(
     key="gemini_api_key",
 )
 
+# Use live model list if key was already validated, else show default
+available_models = st.session_state.get("gemini_available_models", GEMINI_MODELS_DEFAULT)
+
 model_choice = st.sidebar.selectbox(
     t("ai_model_label"),
-    GEMINI_MODELS,
+    available_models,
     index=0,
     help=t("ai_model_help"),
     key="gemini_model",
@@ -36,14 +39,18 @@ if st.sidebar.button(t("ai_validate_btn"), key="validate_key_btn"):
     if not api_key:
         st.sidebar.error("❌ API Key vuota / empty.")
     else:
-        with st.sidebar.spinner("..."):
-            ok, err = GeminiAssistant.validate_key(api_key, model_choice)
+        with st.spinner("..."):
+            ok, err, models = GeminiAssistant.validate_key(api_key)
         if ok:
-            st.sidebar.success(t("ai_validate_ok", model=model_choice))
             st.session_state.gemini_key_valid = True
+            st.session_state.gemini_available_models = models
+            # Pick first model as default after validation
+            best = models[0] if models else "gemini-2.0-flash"
+            st.sidebar.success(t("ai_validate_ok", model=best))
+            st.rerun()
         else:
-            st.sidebar.error(t("ai_validate_fail", err=err))
             st.session_state.gemini_key_valid = False
+            st.sidebar.error(t("ai_validate_fail", err=err))
 
 # ---- Main area ----
 st.title(t("ai_page_title"))
@@ -70,7 +77,7 @@ with st.expander(t("ai_context_expander"), expanded=False):
 
 # ---- Chat history ----
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []  # list of {"role": str, "parts": [{"text": str}]}
+    st.session_state.chat_history = []
 
 # Clear button
 col_clear, _ = st.columns([1, 5])
@@ -102,13 +109,11 @@ for msg in st.session_state.chat_history:
 user_input = st.chat_input(t("ai_input_placeholder"))
 
 if user_input:
-    # Append user message
     st.session_state.chat_history.append({"role": "user", "parts": [{"text": user_input}]})
 
     with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(user_input)
 
-    # Stream model response
     with st.chat_message("assistant", avatar="🤖"):
         placeholder = st.empty()
         full_response = ""
@@ -126,7 +131,6 @@ if user_input:
             full_response = t("ai_stream_err", err=exc)
             placeholder.error(full_response)
 
-    # Save model turn
     if full_response:
         st.session_state.chat_history.append(
             {"role": "model", "parts": [{"text": full_response}]}
