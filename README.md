@@ -33,7 +33,7 @@ Available in Italian and English.
 ## Quick Start (Docker)
 
 ```bash
-git clone https://github.com/your-org/cordis.git
+git clone https://github.com/sabbachina/cordis.git
 cd cordis
 docker-compose up
 ```
