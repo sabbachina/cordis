@@ -85,7 +85,7 @@ def build_context(session_state: dict) -> str:
 
     sig_type = session_state.get("signal_type") or "Unknown"
     fs = session_state.get("sampling_rate") or "Unknown"
-    parts.append("=== ECG/PPG Analysis Platform — Session Context ===")
+    parts.append("=== Cordis — Session Context ===")
     parts.append(f"Signal type : {sig_type}")
     parts.append(f"Sampling rate: {fs} Hz")
 

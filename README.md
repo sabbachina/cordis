@@ -1,4 +1,4 @@
-# ECG/PPG Analysis Platform
+# Cordis
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green) ![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -29,8 +29,8 @@ Available in Italian and English.
 ## Quick Start (Docker)
 
 ```bash
-git clone https://github.com/your-org/ecg-ppg-platform.git
-cd ecg-ppg-platform
+git clone https://github.com/your-org/cordis.git
+cd cordis
 docker-compose up
 ```
 

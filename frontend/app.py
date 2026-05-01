@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from utils.i18n import t, render_language_selector
 
 st.set_page_config(
-    page_title="ECG/PPG Analysis Platform",
+    page_title="Cordis",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",

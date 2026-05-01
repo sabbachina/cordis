@@ -25,7 +25,7 @@ class SafeJSONResponse(JSONResponse):
 
 
 app = FastAPI(
-    title="ECG/PPG Analysis API",
+    title="Cordis API",
     description="Piattaforma per l'estrazione di digital biomarker clinici da segnali ECG e PPG",
     version="1.0.0",
     default_response_class=SafeJSONResponse,
@@ -42,7 +42,7 @@ app.include_router(router)
 
 @app.get("/")
 def root():
-    return {"message": "ECG/PPG Analysis Platform API", "docs": "/docs"}
+    return {"message": "Cordis API", "docs": "/docs"}
 
 @app.get("/health")
 def health():

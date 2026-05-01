@@ -1,5 +1,5 @@
 """
-Internationalisation (i18n) helper for the ECG/PPG Analysis Platform.
+Internationalisation (i18n) helper for Cordis.
 Supports: Italian ("it", default) and English ("en").
 
 Usage
@@ -19,8 +19,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     # ------------------------------------------------------------------ ITALIAN
     "it": {
         # --- Sidebar / App ---
-        "app_title":             " ECG/PPG Analysis Platform",
-        "sidebar_title":         " ECG/PPG Platform",
+        "app_title":             "Cordis",
+        "sidebar_title":         "Cordis",
         "sidebar_steps_header":  "Passaggi Wizard",
         "research_only":         "SOLO PER RICERCA",
         "not_ce":                "NON MARCATO CE",
@@ -323,8 +323,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     # ------------------------------------------------------------------ ENGLISH
     "en": {
         # --- Sidebar / App ---
-        "app_title":             " ECG/PPG Analysis Platform",
-        "sidebar_title":         " ECG/PPG Platform",
+        "app_title":             "Cordis",
+        "sidebar_title":         "Cordis",
         "sidebar_steps_header":  "Wizard Steps",
         "research_only":         "FOR RESEARCH USE ONLY",
         "not_ce":                "NOT CE-MARKED",
