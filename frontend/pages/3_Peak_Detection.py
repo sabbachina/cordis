@@ -6,7 +6,7 @@ from utils.i18n import t, render_language_selector
 from components.signal_plot import plot_signal
 from components.hrv_plots import plot_poincare, plot_rr_tachogram, plot_rr_histogram
 
-st.set_page_config(page_title="Step 3 — Peak Detection", page_icon="📍", layout="wide")
+st.set_page_config(page_title="Step 3 — Peak Detection", page_icon="", layout="wide")
 
 render_language_selector()
 

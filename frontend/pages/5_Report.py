@@ -10,7 +10,7 @@ from components.signal_plot import plot_signal
 from components.hrv_plots import plot_poincare, plot_hrv_spectrum, plot_hrv_psd
 from components.report_pdf import generate_pdf_report
 
-st.set_page_config(page_title="Step 5 — Report", page_icon="📋", layout="wide")
+st.set_page_config(page_title="Step 5 — Report", page_icon="", layout="wide")
 
 render_language_selector()
 
@@ -83,7 +83,7 @@ if ml:
     if ml.get("flags"):
         st.markdown(t("ml_flags"))
         for f in ml["flags"]:
-            st.markdown(f"  - ⚠️ {f}")
+            st.markdown(f"  - ⚠ {f}")
 
 st.subheader(t("sec_signal_plot"))
 preview_len = min(len(sig), fs * 15)

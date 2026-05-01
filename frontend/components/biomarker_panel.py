@@ -87,7 +87,7 @@ def render_sqi_widget(sqi: dict):
     cols[3].metric(t("sqi_baseline"), f"{sqi.get('baseline_wander_fraction', 0)*100:.1f}%")
 
     for w in sqi.get("warnings", []):
-        st.warning(f"⚠️ {w}")
+        st.warning(f"⚠ {w}")
 
 
 def render_nonlinear_section(nlr: dict):

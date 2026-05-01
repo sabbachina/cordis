@@ -8,7 +8,7 @@ from utils.sample_data import generate_sample_ecg, generate_sample_ppg
 from utils.api_client import check_backend_health
 from components.signal_plot import plot_signal
 
-st.set_page_config(page_title="Step 1 — Upload", page_icon="📤", layout="wide")
+st.set_page_config(page_title="Step 1 — Upload", page_icon="", layout="wide")
 
 render_language_selector()
 

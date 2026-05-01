@@ -9,7 +9,7 @@ from components.ai_assistant import (
     build_system_prompt,
 )
 
-st.set_page_config(page_title="AI Assistant", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI Assistant", page_icon="", layout="wide")
 
 # ---- Sidebar: language + Gemini config ----
 render_language_selector()
@@ -37,7 +37,7 @@ model_choice = st.sidebar.selectbox(
 
 if st.sidebar.button(t("ai_validate_btn"), key="validate_key_btn"):
     if not api_key:
-        st.sidebar.error("❌ API Key vuota / empty.")
+        st.sidebar.error(" API Key vuota / empty.")
     else:
         with st.spinner("..."):
             ok, err, models = GeminiAssistant.validate_key(api_key)
@@ -101,7 +101,7 @@ if not st.session_state.chat_history:
 for msg in st.session_state.chat_history:
     role = msg["role"]
     text = msg["parts"][0]["text"]
-    avatar = "🧑‍💻" if role == "user" else "🤖"
+    avatar = "" if role == "user" else ""
     with st.chat_message(role, avatar=avatar):
         st.markdown(text)
 
@@ -111,10 +111,10 @@ user_input = st.chat_input(t("ai_input_placeholder"))
 if user_input:
     st.session_state.chat_history.append({"role": "user", "parts": [{"text": user_input}]})
 
-    with st.chat_message("user", avatar="🧑‍💻"):
+    with st.chat_message("user", avatar=""):
         st.markdown(user_input)
 
-    with st.chat_message("assistant", avatar="🤖"):
+    with st.chat_message("assistant", avatar=""):
         placeholder = st.empty()
         full_response = ""
         try:

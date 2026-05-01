@@ -7,7 +7,7 @@ from utils.api_client import analyze_signal, check_backend_health
 from components.biomarker_panel import render_biomarker_section
 from components.hrv_plots import plot_poincare, plot_hrv_spectrum
 
-st.set_page_config(page_title="Step 4 — Biomarker", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="Step 4 — Biomarker", page_icon="", layout="wide")
 
 render_language_selector()
 
@@ -85,16 +85,16 @@ with col2:
     if report:
         if report.get("warnings"):
             for w in report["warnings"]:
-                st.warning(f"⚠️ {w}")
+                st.warning(f"⚠ {w}")
 
         ml = report.get("ml_anomaly")
         if ml:
             if ml["is_anomalous"]:
-                st.error(f"🚨 **{t('ml_detected')}** (score: {ml['anomaly_score']:.3f}, {t('ml_confidence')}: {ml['confidence']*100:.0f}%)")
+                st.error(f" **{t('ml_detected')}** (score: {ml['anomaly_score']:.3f}, {t('ml_confidence')}: {ml['confidence']*100:.0f}%)")
                 for flag in ml.get("flags", []):
                     st.error(f"  • {flag}")
             else:
-                st.success(f"✅ {t('ml_no')} (score: {ml['anomaly_score']:.3f})")
+                st.success(f" {t('ml_no')} (score: {ml['anomaly_score']:.3f})")
 
         ac = report.get("artifact_correction")
         if ac:
@@ -154,8 +154,8 @@ with col2:
             tf = report["time_freq"]
             st.subheader(t("sec_timefreq"))
             c1, c2, c3 = st.columns(3)
-            c1.metric(t("tf_stft"), "✅" if tf["has_stft"] else "—")
-            c2.metric(t("tf_cwt"), "✅" if tf["has_cwt"] else "—")
+            c1.metric(t("tf_stft"), "" if tf["has_stft"] else "—")
+            c2.metric(t("tf_cwt"), "" if tf["has_cwt"] else "—")
             if tf.get("lf_hf_variability") is not None:
                 c3.metric(t("tf_lf_hf_var"), f"{tf['lf_hf_variability']:.3f}")
             if tf.get("dominant_lf_time_pct") is not None:

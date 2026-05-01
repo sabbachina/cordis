@@ -5,7 +5,7 @@ from utils.i18n import t, render_language_selector
 
 st.set_page_config(
     page_title="ECG/PPG Analysis Platform",
-    page_icon="❤️",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -45,7 +45,7 @@ for step, desc in steps.items():
     st.sidebar.caption(desc)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"⚠️ *{t('research_only')}*")
+st.sidebar.markdown(f"⚠ *{t('research_only')}*")
 st.sidebar.markdown(f"*{t('not_ce')}*")
 
 st.title(t("app_title"))

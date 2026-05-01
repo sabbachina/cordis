@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.i18n import t, render_language_selector
 from components.signal_plot import plot_signal, plot_signal_comparison
 
-st.set_page_config(page_title="Step 2 — Preprocessing", page_icon="🔧", layout="wide")
+st.set_page_config(page_title="Step 2 — Preprocessing", page_icon="", layout="wide")
 
 render_language_selector()
 
