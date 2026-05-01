@@ -17,7 +17,8 @@ if st.session_state.get("biomarker_report") is None:
 
 report = st.session_state.biomarker_report
 signal_type = st.session_state.signal_type
-sig = st.session_state.get("clean_signal") or st.session_state.signal_data
+_clean = st.session_state.get("clean_signal")
+sig = _clean if _clean is not None else st.session_state.signal_data
 fs = st.session_state.sampling_rate
 now = datetime.now().strftime("%Y-%m-%d %H:%M")
 

@@ -12,7 +12,8 @@ if st.session_state.get("signal_data") is None:
     st.warning("Vai prima allo Step 1.")
     st.stop()
 
-sig = st.session_state.get("clean_signal") or st.session_state.signal_data
+_clean = st.session_state.get("clean_signal")
+sig = _clean if _clean is not None else st.session_state.signal_data
 fs = st.session_state.sampling_rate
 signal_type = st.session_state.signal_type
 

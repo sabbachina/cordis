@@ -16,7 +16,8 @@ if st.session_state.get("peaks") is None:
     st.warning("Vai prima allo Step 3 per rilevare i picchi.")
     st.stop()
 
-sig = st.session_state.get("clean_signal") or st.session_state.signal_data
+_clean = st.session_state.get("clean_signal")
+sig = _clean if _clean is not None else st.session_state.signal_data
 fs = st.session_state.sampling_rate
 signal_type = st.session_state.signal_type
 prep = st.session_state.get("preprocessing_config", {"lowcut": 0.5, "highcut": 40.0, "method": "butterworth", "remove_baseline": True})
