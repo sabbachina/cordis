@@ -36,6 +36,7 @@ steps = {
     t("nav_step3"): t("nav_desc3"),
     t("nav_step4"): t("nav_desc4"),
     t("nav_step5"): t("nav_desc5"),
+    t("nav_step6"): t("nav_desc6"),
 }
 
 st.sidebar.markdown(f"### {t('sidebar_steps_header')}")
